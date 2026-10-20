@@ -27,7 +27,7 @@ MY_CONTACT_PHONE = "+91 98765 43210"
 MY_EMAIL = "rajiv.kumar@email.com"     
 MY_LOCATION = "Jalandhar, Punjab, India"
 
- https://script.google.com/macros/s/AKfycbxkPrTQK017yE2WJDo65jO6Ulpw2ESpokbJuUWltvLCSKlq_vKFavc3Dl3NNh2duyYF2g/exec
+GOOGLE_SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxkPrTQK017yE2WJDo65jO6Ulpw2ESpokbJuUWltvLCSKlq_vKFavc3Dl3NNh2duyYF2g/exec"
 
 # --- ASTROLOGICAL CONSTANTS ---
 ZODIAC_SIGNS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]
