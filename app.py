@@ -9,11 +9,19 @@ from google import genai
 
 # --- PAGE CONFIGURATION (Mobile Friendly) ---
 st.set_page_config(
-    page_title="Vedic & KP AI Astrologer",
+    page_title="Kp & Bhava Jyotish | Rajiv Kumar",
     page_icon="🪐",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
+
+# --- 🌟 YOUR BRAND & CONTACT DETAILS (EDIT HERE) ---
+MY_BRAND_NAME = "KP & Bhava Jyotish"
+MY_FULL_NAME = "Rajiv Kumar"
+MY_TITLE = "Mr"
+MY_CONTACT_PHONE = "+91 9914465143"  # Replace with your actual phone number
+MY_EMAIL = "rajiv.kuralia@email.com"     # Replace with your email
+MY_LOCATION = "Jalandhar, Punjab, India"
 
 # --- ASTROLOGICAL CONSTANTS ---
 ZODIAC_SIGNS = [
@@ -40,12 +48,6 @@ PLANET_SHORT = {
 
 # --- NORTH INDIAN KUNDALI SVG GENERATOR ---
 def render_north_indian_chart_svg(title, lagna_sign_idx, house_planets_dict):
-    """
-    Generates a clean, mobile-responsive North Indian Diamond Kundali SVG.
-    lagna_sign_idx: 0 for Aries .. 11 for Pisces
-    house_planets_dict: {1: ["Ma"], 2: ["Ve", "Sa"], ...}
-    """
-    # Coordinates for Rashi numbers (1-12) and Planet text in each of the 12 houses (400x400 viewBox)
     house_coords = {
         1:  {"rashi": (200, 175), "planets": (200, 105)},
         2:  {"rashi": (100, 78),  "planets": (100, 38)},
@@ -67,16 +69,13 @@ def render_north_indian_chart_svg(title, lagna_sign_idx, house_planets_dict):
         rx, ry = house_coords[h]["rashi"]
         px, py = house_coords[h]["planets"]
 
-        # Rashi Number (Reddish-Orange)
         svg_elements.append(
             f'<text x="{rx}" y="{ry}" fill="#c0392b" font-size="13" font-weight="bold" '
             f'text-anchor="middle" dominant-baseline="middle">{rashi_num}</text>'
         )
 
-        # Planets in this house
         p_list = house_planets_dict.get(h, [])
         if p_list:
-            # Split into 2 lines if more than 2 planets sit in the same house
             if len(p_list) <= 2:
                 p_str = " ".join(p_list)
                 svg_elements.append(
@@ -100,17 +99,13 @@ def render_north_indian_chart_svg(title, lagna_sign_idx, house_planets_dict):
     <div style="text-align:center; margin-bottom: 12px;">
         <div style="font-weight:700; font-size:16px; margin-bottom:6px; color:#b85d19;">{title}</div>
         <svg viewBox="0 0 400 400" width="100%" style="max-width:340px; background:#fffdf7; border: 2.5px solid #b85d19; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
-            <!-- Outer Box -->
             <rect x="2" y="2" width="396" height="396" fill="none" stroke="#b85d19" stroke-width="2.5"/>
-            <!-- Diagonal Cross Lines -->
             <line x1="0" y1="0" x2="400" y2="400" stroke="#b85d19" stroke-width="2"/>
             <line x1="400" y1="0" x2="0" y2="400" stroke="#b85d19" stroke-width="2"/>
-            <!-- Inner Diamond Lines -->
             <line x1="200" y1="0" x2="0" y2="200" stroke="#b85d19" stroke-width="2"/>
             <line x1="0" y1="200" x2="200" y2="400" stroke="#b85d19" stroke-width="2"/>
             <line x1="200" y1="400" x2="400" y2="200" stroke="#b85d19" stroke-width="2"/>
             <line x1="400" y1="200" x2="200" y2="0" stroke="#b85d19" stroke-width="2"/>
-            <!-- Rashi Numbers & Planets -->
             {inner_svg}
         </svg>
     </div>
@@ -203,8 +198,8 @@ def calculate_vimshottari_dasha(moon_lon_deg, birth_dt_naive):
     now = datetime.datetime.now()
     dasha_timeline = []
     current_date = birth_dt_naive
-    active_md = None
-    active_ad = None
+    active_md = {"lord": "Unknown", "start": "", "end": ""}
+    active_ad = {"lord": "Unknown", "start": "", "end": ""}
 
     for i in range(9):
         idx = (start_lord_idx + i) % 9
@@ -336,7 +331,6 @@ def build_complete_kundali(name, dob_date, tob_time, place_query, ayanamsa_choic
             "retrograde": True if p_name == "Rahu" else (p_speed < 0)
         }
 
-    # Add Ketu
     rahu_res, _ = swe.calc_ut(jd_ut, swe.MEAN_NODE, swe.FLG_SIDEREAL | swe.FLG_SWIEPH)
     ketu_lon = (rahu_res[0] + 180.0) % 360.0
     k_s_idx = int(ketu_lon // 30)
@@ -405,6 +399,9 @@ def get_astrology_reading(api_key, chart_json, user_question, language):
     2. **KP Precision Analysis:** Explicitly examine the relevant Cuspal Sub-Lords (CSL) for the user's question, check if planets shifted houses in `kp_bhava_chalit_house`, and evaluate the active Mahadasha & Antardasha lords via their Star Lords and Sub-Lords.
     3. **Direct, Concrete Predictions:** Give clear timelines, practical life patterns, and candid guidance without vague generalizations.
     4. **Practical Remedies:** Suggest 2-3 simple, traditional Vedic/lifestyle remedies tailored to the active Dasha.
+    
+    IMPORTANT INSTRUCTION FOR THE READING OUTPUT:
+    Conclude your reading report by reminding the user that this consultation is brought to you by **{MY_FULL_NAME}** under **{MY_BRAND_NAME}**, and invite them to reach out at **{MY_CONTACT_PHONE}** for personalized consultations or advisory services.
     """
 
     prompt = (
@@ -413,32 +410,44 @@ def get_astrology_reading(api_key, chart_json, user_question, language):
         f"User's Question / Focus Area: {user_question}"
     )
 
-    response = client.models.generate_content(
-        model="gemini-2.5-pro",
-        contents=prompt,
-        config={"system_instruction": system_instruction}
-    )
-    return response.text
+    models_to_try = ["gemini-3.1-pro-preview", "gemini-3-flash-preview", "gemini-2.5-flash"]
+    last_err = None
+    for model_name in models_to_try:
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt,
+                config={"system_instruction": system_instruction}
+            )
+            return response.text
+        except Exception as e:
+            last_err = e
+            continue
+    raise RuntimeError(f"Could not connect to Gemini models. Last error: {last_err}")
 
-# --- STREAMLIT MOBILE UI ---
-st.title("🪐 Vedic & KP AI Astrologer")
-st.caption("North Indian Kundali (D1 & D9) + KP Sub-Lords + AI Jyotish Predictions")
+# --- STREAMLIT MOBILE USER INTERFACE ---
+st.title(f"🪐 {MY_BRAND_NAME}")
+st.markdown(f"**Curated & Presented by:** {MY_FULL_NAME} *({MY_TITLE}*)")
+st.markdown("---")
 
 if "GEMINI_API_KEY" in st.secrets:
     st.session_state["api_key"] = st.secrets["GEMINI_API_KEY"]
-with st.expander("⚙️ Language & Ayanamsa Settings"):
+
+with st.expander("⚙️ Language, Ayanamsa & Brand Info"):
     if not st.session_state.get("api_key"):
-        api_key_input = st.text_input("Enter Gemini API Key:", type="password")
+        api_key_input = st.text_input("Enter your Google Gemini API Key:", type="password")
         if api_key_input:
             st.session_state["api_key"] = api_key_input
     ayanamsa_mode = st.selectbox("Ayanamsa System:", ["Lahiri", "KP New / Krishnamurti"])
     output_lang = st.selectbox("Reading Language:", ["English", "Hinglish (Hindi + English)", "Hindi (हिंदी)", "Punjabi (ਪੰਜਾਬੀ)"])
+    
+    st.info(f"**Consultant Contact Info:**\n- Name: {MY_FULL_NAME}\n- Phone: {MY_CONTACT_PHONE}\n- Location: {MY_LOCATION}")
 
 with st.form("birth_details_form"):
-    st.subheader("📋 Enter Birth Details")
+    st.subheader("📋 Enter Birth Details for Consultation")
     col1, col2 = st.columns(2)
     with col1:
-        name = st.text_input("Full Name", value="Anchal")
+        name = st.text_input("Client / Full Name", value="Anchal")
         dob = st.date_input(
             "Date of Birth",
             value=datetime.date(1983, 12, 13),
@@ -453,18 +462,18 @@ with st.form("birth_details_form"):
         "What would you like to ask the Astrologer?",
         value="Give a complete life reading covering personality, wealth, family, health, and predictions for the current Dasha period."
     )
-    submit_btn = st.form_submit_button("✨ Generate Kundali & Get Prediction", use_container_width=True)
+    submit_btn = st.form_submit_button("✨ Generate Kundali & Get Expert Reading", use_container_width=True)
 
 if submit_btn:
     if not st.session_state.get("api_key"):
-        st.error("Please enter your Google Gemini API Key in the settings box above.")
+        st.error("Please enter your Google Gemini API Key in Settings or Streamlit Secrets.")
     else:
         with st.spinner("Calculating Swiss Ephemeris Planetary Degrees, D9 Navamsha & KP Cusps..."):
             try:
                 chart_data = build_complete_kundali(name, dob, tob, place, ayanamsa_mode)
                 st.session_state["chart_data"] = chart_data
-                md = chart_data['vimshottari_dasha']['current_mahadasha']['lord']
-                ad = chart_data['vimshottari_dasha']['current_antardasha']['lord']
+                md = chart_data["vimshottari_dasha"]["current_mahadasha"]["lord"]
+                ad = chart_data["vimshottari_dasha"]["current_antardasha"]["lord"]
                 st.success(f"Chart generated for **{name}** ({chart_data['lagna']['d1_sign']} Ascendant | Active Dasha: **{md} - {ad}**)")
             except Exception as e:
                 st.error(f"Error calculating chart: {e}")
@@ -481,7 +490,76 @@ if submit_btn:
 if "chart_data" in st.session_state:
     cd = st.session_state["chart_data"]
 
-    # Build house-wise planet dictionaries for D1, KP Bhava, and D9
     d1_houses = {i: [] for i in range(1, 13)}
     kp_houses = {i: [] for i in range(1, 13)}
-    d9_houses 
+    d9_houses = {i: [] for i in range(1, 13)}
+
+    for p_name, p_info in cd["planets"].items():
+        short_label = PLANET_SHORT[p_name] + ("(R)" if p_info["retrograde"] and p_name not in ["Rahu", "Ketu"] else "")
+        d1_houses[p_info["d1_rashi_house"]].append(short_label)
+        kp_houses[p_info["kp_bhava_chalit_house"]].append(short_label)
+        d9_houses[p_info["d9_house"]].append(short_label)
+
+    st.subheader("📐 Visual Kundali Charts (North Indian Style)")
+    chart_col1, chart_col2 = st.columns(2)
+    with chart_col1:
+        svg_d1 = render_north_indian_chart_svg(
+            f"Lagna Chart (D1) - {cd['lagna']['d1_sign']}",
+            cd["lagna"]["d1_sign_idx"],
+            d1_houses
+        )
+        st.markdown(svg_d1, unsafe_allow_html=True)
+    with chart_col2:
+        svg_d9 = render_north_indian_chart_svg(
+            f"Navamsha (D9) - {cd['lagna']['d9_navamsha_lagna']}",
+            cd["lagna"]["d9_sign_idx"],
+            d9_houses
+        )
+        st.markdown(svg_d9, unsafe_allow_html=True)
+
+    with st.expander("🔍 View KP Nirayana Bhava Chalit Visual Chart"):
+        svg_kp = render_north_indian_chart_svg(
+            "KP Bhava Chalit Chart (Placidus Shifts)",
+            cd["lagna"]["d1_sign_idx"],
+            kp_houses
+        )
+        st.markdown(svg_kp, unsafe_allow_html=True)
+
+    tab1, tab2, tab3 = st.tabs(["📜 Astrologer Reading", "🔭 KP & Planet Tables", "🗂️ Raw JSON"])
+
+    with tab1:
+        if "last_reading" in st.session_state:
+            st.markdown(st.session_state["last_reading"])
+
+        st.divider()
+        follow_up = st.chat_input("Ask a follow-up question about this chart...")
+        if follow_up:
+            with st.spinner("Checking chart significators..."):
+                reply = get_astrology_reading(
+                    st.session_state["api_key"],
+                    st.session_state["chart_data"],
+                    follow_up,
+                    output_lang
+                )
+                st.markdown(f"**Question:** {follow_up}")
+                st.markdown(reply)
+
+    with tab2:
+        st.subheader("Planetary Positions (D1, D9 & KP Star/Sub)")
+        st.dataframe(cd["planets"], use_container_width=True)
+        st.subheader("KP 12 Placidus House Cusps")
+        st.dataframe(cd["kp_12_cusps"], use_container_width=True)
+
+    with tab3:
+        st.json(cd)
+
+# --- PROFESSIONAL FOOTER BRANDING ---
+st.markdown("---")
+st.markdown(
+    f"<div style='text-align: center; color: #666; font-size: 14px;'>"
+    f"<b>{KP & Bhava Jyotish}</b><br>"
+    f"Consultations by <b>{Rajiv Kumar}</b> ({Mr.})<br>"
+    f"📞 Contact: {9914465143} | 📍 {Jalandhar}"
+    f"</div>",
+    unsafe_allow_html=True
+)
