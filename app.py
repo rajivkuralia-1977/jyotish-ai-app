@@ -20,7 +20,7 @@ MY_BRAND_NAME = "KP & Bhava Jyotish"
 MY_FULL_NAME = "Rajiv Kumar"
 MY_TITLE = "Vedic"
 MY_CONTACT_PHONE = "+91 9914465143"  # Apna phone number yahan likhein
-MY_EMAIL = "rajiv.kuRALIA@email.com"     # Apna email yahan likhein
+MY_EMAIL = "rajiv.kuralia@gmail.com"     # Apna email yahan likhein
 MY_LOCATION = "Jalandhar, Punjab, India"
 
 # --- ASTROLOGICAL CONSTANTS ---
