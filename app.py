@@ -236,7 +236,44 @@ def calculate_vimshottari_dasha(moon_lon_deg, birth_dt_naive):
             "end": end_date.strftime("%Y-%m-%d")
         })
         current_date = end_date
+@st.cache_data(show_spinner=False)
+def get_city_coordinates(place_query):
+    """Fetches Latitude & Longitude with 10s timeout + backup geocoder + fast local fallback."""
+    clean_q = place_query.strip().lower()
+    # Instant dictionary for common cities (0 second wait)
+    fast_cities = {
+        "jalandhar": (31.3260, 75.5762, "Jalandhar, Punjab, India"),
+        "amritsar": (31.6340, 74.8723, "Amritsar, Punjab, India"),
+        "ludhiana": (30.9010, 75.8573, "Ludhiana, Punjab, India"),
+        "chandigarh": (30.7333, 76.7794, "Chandigarh, India"),
+        "patiala": (30.3398, 76.3869, "Patiala, Punjab, India"),
+        "delhi": (28.6139, 77.2090, "New Delhi, Delhi, India"),
+        "mumbai": (19.0760, 72.8777, "Mumbai, Maharashtra, India"),
+    }
+    for city_key, (lat, lon, addr) in fast_cities.items():
+        if city_key in clean_q:
+            return lat, lon, addr
 
+    # Primary Map Server (Nominatim with 10-second timeout)
+    try:
+        geolocator = Nominatim(user_agent=f"kp_bhava_jyotish_{datetime.date.today()}", timeout=10)
+        loc = geolocator.geocode(place_query, timeout=10)
+        if loc:
+            return loc.latitude, loc.longitude, loc.address
+    except Exception:
+        pass
+
+    # Backup Map Server (ArcGIS - never blocks cloud IPs)
+    from geopy.geocoders import ArcGIS
+    backup_geo = ArcGIS(timeout=10)
+    loc = backup_geo.geocode(place_query, timeout=10)
+    if loc:
+        return loc.latitude, loc.longitude, loc.address
+
+    raise ValueError(f"Could not find coordinates for '{place_query}'. Please check spelling.")
+
+def build_complete_kundali(name, dob_date, tob_time, place_query, ayanamsa_choice="Lahiri"):
+    lat, lon, resolved_address = get_city_coordinates(place_query)
     return {
         "current_mahadasha": active_md,
         "current_antardasha": active_ad,
@@ -244,14 +281,45 @@ def calculate_vimshottari_dasha(moon_lon_deg, birth_dt_naive):
     }
 
 # --- MAIN KUNDALI & KP GENERATOR ---
-def build_complete_kundali(name, dob_date, tob_time, place_query, ayanamsa_choice="Lahiri"):
-    geolocator = Nominatim(user_agent="vedic_kp_jyotish_app_2026")
-    location = geolocator.geocode(place_query)
-    if not location:
-        raise ValueError(f"Could not find coordinates for '{place_query}'. Try adding state/country.")
+@st.cache_data(show_spinner=False)
+def get_city_coordinates(place_query):
+    """Fetches Latitude & Longitude with 10s timeout + backup geocoder + fast local fallback."""
+    clean_q = place_query.strip().lower()
+    # Instant dictionary for common cities (0 second wait)
+    fast_cities = {
+        "jalandhar": (31.3260, 75.5762, "Jalandhar, Punjab, India"),
+        "amritsar": (31.6340, 74.8723, "Amritsar, Punjab, India"),
+        "ludhiana": (30.9010, 75.8573, "Ludhiana, Punjab, India"),
+        "chandigarh": (30.7333, 76.7794, "Chandigarh, India"),
+        "patiala": (30.3398, 76.3869, "Patiala, Punjab, India"),
+        "delhi": (28.6139, 77.2090, "New Delhi, Delhi, India"),
+        "mumbai": (19.0760, 72.8777, "Mumbai, Maharashtra, India"),
+    }
+    for city_key, (lat, lon, addr) in fast_cities.items():
+        if city_key in clean_q:
+            return lat, lon, addr
 
-    lat, lon = location.latitude, location.longitude
-    tf = TimezoneFinder()
+    # Primary Map Server (Nominatim with 10-second timeout)
+    try:
+        geolocator = Nominatim(user_agent=f"kp_bhava_jyotish_{datetime.date.today()}", timeout=10)
+        loc = geolocator.geocode(place_query, timeout=10)
+        if loc:
+            return loc.latitude, loc.longitude, loc.address
+    except Exception:
+        pass
+
+    # Backup Map Server (ArcGIS - never blocks cloud IPs)
+    from geopy.geocoders import ArcGIS
+    backup_geo = ArcGIS(timeout=10)
+    loc = backup_geo.geocode(place_query, timeout=10)
+    if loc:
+        return loc.latitude, loc.longitude, loc.address
+
+    raise ValueError(f"Could not find coordinates for '{place_query}'. Please check spelling.")
+
+def build_complete_kundali(name, dob_date, tob_time, place_query, ayanamsa_choice="Lahiri"):
+    lat, lon, resolved_address = get_city_coordinates(place_query)
+tf = TimezoneFinder()
     tz_name = tf.timezone_at(lng=lon, lat=lat) or "Asia/Kolkata"
     local_tz = pytz.timezone(tz_name)
 
