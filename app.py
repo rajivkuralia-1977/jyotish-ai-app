@@ -557,9 +557,9 @@ if "chart_data" in st.session_state:
 st.markdown("---")
 st.markdown(
     f"<div style='text-align: center; color: #666; font-size: 14px;'>"
-    f"<b>{KP & Bhava Jyotish}</b><br>"
-    f"Consultations by <b>{Rajiv Kumar}</b> ({Mr.})<br>"
-    f"📞 Contact: {9914465143} | 📍 {Jalandhar}"
+    f"<b>{MY_BRAND_NAME}</b><br>"
+    f"Consultations by <b>{MY_FULL_NAME}</b> ({MY_TITLE})<br>"
+    f"📞 Contact: {MY_CONTACT_PHONE} | 📍 {MY_LOCATION}"
     f"</div>",
     unsafe_allow_html=True
 )
