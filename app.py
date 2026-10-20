@@ -512,8 +512,7 @@ if submit_btn:
     elif not st.session_state.get("api_key"):
         st.error("Please enter your Google Gemini API Key in Settings or Streamlit Secrets.")
     else:
-        # (The rest of your calculation code stays exactly the same below this)
-    else:
+       
         with st.spinner("Calculating Swiss Ephemeris Planetary Degrees, D9 Navamsha & KP Cusps..."):
             try:
                 chart_data = build_complete_kundali(name, dob, tob, place, ayanamsa_mode)
