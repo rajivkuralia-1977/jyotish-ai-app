@@ -2,25 +2,25 @@ import streamlit as st
 import datetime
 import json
 import swisseph as swe
-from geopy.geocoders import Nominatim
+from geopy.geocoders import Nominatim, ArcGIS
 from timezonefinder import TimezoneFinder
 import pytz
 from google import genai
 
 # --- PAGE CONFIGURATION (Mobile Friendly) ---
 st.set_page_config(
-    page_title="Kp & Bhava Jyotish | Rajiv Kumar",
+    page_title="KP & Bhava Jyotish | Rajiv Kumar",
     page_icon="🪐",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
 
-# --- 🌟 YOUR BRAND & CONTACT DETAILS (EDIT HERE) ---
+# --- 🌟 YOUR BRAND & CONTACT DETAILS (EDIT PHONE/EMAIL HERE) ---
 MY_BRAND_NAME = "KP & Bhava Jyotish"
 MY_FULL_NAME = "Rajiv Kumar"
-MY_TITLE = ""
-MY_CONTACT_PHONE = "+91 9914465143"  # Replace with your actual phone number
-MY_EMAIL = "rajiv.kuralia@email.com"     # Replace with your email
+MY_TITLE = "Vedic"
+MY_CONTACT_PHONE = "+91 9914465143"  # Apna phone number yahan likhein
+MY_EMAIL = "rajiv.kuRALIA@email.com"     # Apna email yahan likhein
 MY_LOCATION = "Jalandhar, Punjab, India"
 
 # --- ASTROLOGICAL CONSTANTS ---
@@ -236,90 +236,63 @@ def calculate_vimshottari_dasha(moon_lon_deg, birth_dt_naive):
             "end": end_date.strftime("%Y-%m-%d")
         })
         current_date = end_date
-@st.cache_data(show_spinner=False)
-def get_city_coordinates(place_query):
-    """Fetches Latitude & Longitude with 10s timeout + backup geocoder + fast local fallback."""
-    clean_q = place_query.strip().lower()
-    # Instant dictionary for common cities (0 second wait)
-    fast_cities = {
-        "jalandhar": (31.3260, 75.5762, "Jalandhar, Punjab, India"),
-        "amritsar": (31.6340, 74.8723, "Amritsar, Punjab, India"),
-        "ludhiana": (30.9010, 75.8573, "Ludhiana, Punjab, India"),
-        "chandigarh": (30.7333, 76.7794, "Chandigarh, India"),
-        "patiala": (30.3398, 76.3869, "Patiala, Punjab, India"),
-        "delhi": (28.6139, 77.2090, "New Delhi, Delhi, India"),
-        "mumbai": (19.0760, 72.8777, "Mumbai, Maharashtra, India"),
-    }
-    for city_key, (lat, lon, addr) in fast_cities.items():
-        if city_key in clean_q:
-            return lat, lon, addr
 
-    # Primary Map Server (Nominatim with 10-second timeout)
-    try:
-        geolocator = Nominatim(user_agent=f"kp_bhava_jyotish_{datetime.date.today()}", timeout=10)
-        loc = geolocator.geocode(place_query, timeout=10)
-        if loc:
-            return loc.latitude, loc.longitude, loc.address
-    except Exception:
-        pass
-
-    # Backup Map Server (ArcGIS - never blocks cloud IPs)
-    from geopy.geocoders import ArcGIS
-    backup_geo = ArcGIS(timeout=10)
-    loc = backup_geo.geocode(place_query, timeout=10)
-    if loc:
-        return loc.latitude, loc.longitude, loc.address
-
-    raise ValueError(f"Could not find coordinates for '{place_query}'. Please check spelling.")
-
-def build_complete_kundali(name, dob_date, tob_time, place_query, ayanamsa_choice="Lahiri"):
-    lat, lon, resolved_address = get_city_coordinates(place_query)
     return {
         "current_mahadasha": active_md,
         "current_antardasha": active_ad,
         "mahadasha_sequence": dasha_timeline
     }
 
-# --- MAIN KUNDALI & KP GENERATOR ---
+# --- TIMEOUT-PROOF CITY COORDINATES ENGINE ---
 @st.cache_data(show_spinner=False)
 def get_city_coordinates(place_query):
-    """Fetches Latitude & Longitude with 10s timeout + backup geocoder + fast local fallback."""
     clean_q = place_query.strip().lower()
-    # Instant dictionary for common cities (0 second wait)
     fast_cities = {
         "jalandhar": (31.3260, 75.5762, "Jalandhar, Punjab, India"),
         "amritsar": (31.6340, 74.8723, "Amritsar, Punjab, India"),
         "ludhiana": (30.9010, 75.8573, "Ludhiana, Punjab, India"),
         "chandigarh": (30.7333, 76.7794, "Chandigarh, India"),
         "patiala": (30.3398, 76.3869, "Patiala, Punjab, India"),
+        "bathinda": (30.2110, 74.9455, "Bathinda, Punjab, India"),
+        "hoshiarpur": (31.5143, 75.9115, "Hoshiarpur, Punjab, India"),
+        "kapurthala": (31.3800, 75.3800, "Kapurthala, Punjab, India"),
+        "phagwara": (31.2240, 75.7708, "Phagwara, Punjab, India"),
+        "pathankot": (32.2643, 75.6421, "Pathankot, Punjab, India"),
+        "mohali": (30.7046, 76.7179, "Mohali, Punjab, India"),
         "delhi": (28.6139, 77.2090, "New Delhi, Delhi, India"),
         "mumbai": (19.0760, 72.8777, "Mumbai, Maharashtra, India"),
+        "bengaluru": (12.9716, 77.5946, "Bengaluru, Karnataka, India"),
+        "bangalore": (12.9716, 77.5946, "Bengaluru, Karnataka, India"),
     }
     for city_key, (lat, lon, addr) in fast_cities.items():
         if city_key in clean_q:
             return lat, lon, addr
 
-    # Primary Map Server (Nominatim with 10-second timeout)
+    # Backup 1: ArcGIS (Reliable & Fast on Cloud Servers)
     try:
-        geolocator = Nominatim(user_agent=f"kp_bhava_jyotish_{datetime.date.today()}", timeout=10)
+        arcgis_geo = ArcGIS(timeout=10)
+        loc = arcgis_geo.geocode(place_query, timeout=10)
+        if loc:
+            return loc.latitude, loc.longitude, loc.address
+    except Exception:
+        pass
+
+    # Backup 2: Nominatim with 10s timeout
+    try:
+        geolocator = Nominatim(user_agent="kp_bhava_jyotish_rajiv_2026", timeout=10)
         loc = geolocator.geocode(place_query, timeout=10)
         if loc:
             return loc.latitude, loc.longitude, loc.address
     except Exception:
         pass
 
-    # Backup Map Server (ArcGIS - never blocks cloud IPs)
-    from geopy.geocoders import ArcGIS
-    backup_geo = ArcGIS(timeout=10)
-    loc = backup_geo.geocode(place_query, timeout=10)
-    if loc:
-        return loc.latitude, loc.longitude, loc.address
+    raise ValueError(f"Could not find coordinates for '{place_query}'. Please check city spelling.")
 
-    raise ValueError(f"Could not find coordinates for '{place_query}'. Please check spelling.")
-
+# --- MAIN KUNDALI & KP GENERATOR ---
 def build_complete_kundali(name, dob_date, tob_time, place_query, ayanamsa_choice="Lahiri"):
     lat, lon, resolved_address = get_city_coordinates(place_query)
-tf = TimezoneFinder()
+
+    tf = TimezoneFinder()
     tz_name = tf.timezone_at(lng=lon, lat=lat) or "Asia/Kolkata"
     local_tz = pytz.timezone(tz_name)
 
@@ -428,7 +401,7 @@ tf = TimezoneFinder()
             "name": name,
             "date": dob_date.strftime("%Y-%m-%d"),
             "time": tob_time.strftime("%H:%M:%S"),
-            "place": location.address,
+            "place": resolved_address,
             "latitude": round(lat, 5),
             "longitude": round(lon, 5),
             "timezone": tz_name,
@@ -467,7 +440,7 @@ def get_astrology_reading(api_key, chart_json, user_question, language):
     2. **KP Precision Analysis:** Explicitly examine the relevant Cuspal Sub-Lords (CSL) for the user's question, check if planets shifted houses in `kp_bhava_chalit_house`, and evaluate the active Mahadasha & Antardasha lords via their Star Lords and Sub-Lords.
     3. **Direct, Concrete Predictions:** Give clear timelines, practical life patterns, and candid guidance without vague generalizations.
     4. **Practical Remedies:** Suggest 2-3 simple, traditional Vedic/lifestyle remedies tailored to the active Dasha.
-    
+
     IMPORTANT INSTRUCTION FOR THE READING OUTPUT:
     Conclude your reading report by reminding the user that this consultation is brought to you by **{MY_FULL_NAME}** under **{MY_BRAND_NAME}**, and invite them to reach out at **{MY_CONTACT_PHONE}** for personalized consultations or advisory services.
     """
@@ -495,7 +468,7 @@ def get_astrology_reading(api_key, chart_json, user_question, language):
 
 # --- STREAMLIT MOBILE USER INTERFACE ---
 st.title(f"🪐 {MY_BRAND_NAME}")
-st.markdown(f"**Curated & Presented by:** {MY_FULL_NAME} *({MY_TITLE}*)")
+st.markdown(f"**Curated & Presented by:** {MY_FULL_NAME} *({MY_TITLE})*")
 st.markdown("---")
 
 if "GEMINI_API_KEY" in st.secrets:
@@ -508,8 +481,8 @@ with st.expander("⚙️ Language, Ayanamsa & Brand Info"):
             st.session_state["api_key"] = api_key_input
     ayanamsa_mode = st.selectbox("Ayanamsa System:", ["Lahiri", "KP New / Krishnamurti"])
     output_lang = st.selectbox("Reading Language:", ["English", "Hinglish (Hindi + English)", "Hindi (हिंदी)", "Punjabi (ਪੰਜਾਬੀ)"])
-    
-    st.info(f"**Consultant Contact Info:**\n- Name: {MY_FULL_NAME}\n- Phone: {MY_CONTACT_PHONE}\n- Location: {MY_LOCATION}")
+
+    st.info(f"**Consultant Contact Info:**\n- Name: {MY_FULL_NAME}\n- Phone: {MY_CONTACT_PHONE}\n- Email: {MY_EMAIL}\n- Location: {MY_LOCATION}")
 
 with st.form("birth_details_form"):
     st.subheader("📋 Enter Birth Details for Consultation")
@@ -627,7 +600,7 @@ st.markdown(
     f"<div style='text-align: center; color: #666; font-size: 14px;'>"
     f"<b>{MY_BRAND_NAME}</b><br>"
     f"Consultations by <b>{MY_FULL_NAME}</b> ({MY_TITLE})<br>"
-    f"📞 Contact: {MY_CONTACT_PHONE} | 📍 {MY_LOCATION}"
+    f"📞 Contact: {MY_CONTACT_PHONE} | ✉️ {MY_EMAIL} | 📍 {MY_LOCATION}"
     f"</div>",
     unsafe_allow_html=True
 )
