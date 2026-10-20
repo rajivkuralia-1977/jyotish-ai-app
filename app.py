@@ -22,9 +22,9 @@ st.set_page_config(
 # --- 🌟 YOUR BRAND & SHEET SETTINGS ---
 MY_BRAND_NAME = "KP & Bhava Jyotish"
 MY_FULL_NAME = "Rajiv Kumar"
-MY_TITLE = "Licensed Mutual Fund Distributor & Vedic Astrologer"
-MY_CONTACT_PHONE = "+91 98765 43210"  
-MY_EMAIL = "rajiv.kumar@email.com"     
+MY_TITLE = "Vedic"
+MY_CONTACT_PHONE = "+91 9914465143"  
+MY_EMAIL = "rajiv.kuralia@gmail.com"     
 MY_LOCATION = "Jalandhar, Punjab, India"
 
 GOOGLE_SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxkPrTQK017yE2WJDo65jO6Ulpw2ESpokbJuUWltvLCSKlq_vKFavc3Dl3NNh2duyYF2g/exec"
