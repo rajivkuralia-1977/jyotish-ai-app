@@ -18,7 +18,7 @@ st.set_page_config(
 # --- 🌟 YOUR BRAND & CONTACT DETAILS (EDIT HERE) ---
 MY_BRAND_NAME = "KP & Bhava Jyotish"
 MY_FULL_NAME = "Rajiv Kumar"
-MY_TITLE = "Mr"
+MY_TITLE = ""
 MY_CONTACT_PHONE = "+91 9914465143"  # Replace with your actual phone number
 MY_EMAIL = "rajiv.kuralia@email.com"     # Replace with your email
 MY_LOCATION = "Jalandhar, Punjab, India"
