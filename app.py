@@ -488,26 +488,31 @@ with st.form("birth_details_form"):
     st.subheader("📋 Enter Birth Details for Consultation")
     col1, col2 = st.columns(2)
     with col1:
-        name = st.text_input("Client / Full Name", value="Anchal")
+        name = st.text_input("Client / Full Name", value="")
         dob = st.date_input(
             "Date of Birth",
-            value=datetime.date(1983, 12, 13),
+            value=None,  # This makes the date picker blank by default
             min_value=datetime.date(1920, 1, 1),
             max_value=datetime.date.today()
         )
     with col2:
-        tob = st.time_input("Exact Time of Birth (24-hr)", value=datetime.time(0, 45), step=60)
-        place = st.text_input("City & State of Birth", value="Jalandhar, Punjab, India")
+        tob = st.time_input("Exact Time of Birth (24-hr)", value=None, step=60) # Makes time blank
+        place = st.text_input("City & State of Birth", value="", placeholder="e.g., Jalandhar, Punjab, India")
 
     question = st.text_area(
         "What would you like to ask the Astrologer?",
-        value="Give a complete life reading covering personality, wealth, family, health, and predictions for the current Dasha period."
+        value="", 
+        placeholder="e.g., Give a complete life reading covering career, wealth, and health."
     )
     submit_btn = st.form_submit_button("✨ Generate Kundali & Get Expert Reading", use_container_width=True)
 
 if submit_btn:
-    if not st.session_state.get("api_key"):
+    if not name or not dob or not tob or not place:
+        st.error("⚠️ Please fill in all the birth details (Name, Date, Time, and City) before submitting.")
+    elif not st.session_state.get("api_key"):
         st.error("Please enter your Google Gemini API Key in Settings or Streamlit Secrets.")
+    else:
+        # (The rest of your calculation code stays exactly the same below this)
     else:
         with st.spinner("Calculating Swiss Ephemeris Planetary Degrees, D9 Navamsha & KP Cusps..."):
             try:
