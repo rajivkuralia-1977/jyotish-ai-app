@@ -9,7 +9,8 @@ import pytz
 from google import genai
 from fpdf import FPDF
 import io
-base64
+import base64
+
 # --- PAGE CONFIGURATION (Mobile Friendly) ---
 st.set_page_config(
     page_title="KP & Bhava Jyotish | Rajiv Kumar",
@@ -21,13 +22,13 @@ st.set_page_config(
 # --- 🌟 YOUR BRAND & SHEET SETTINGS ---
 MY_BRAND_NAME = "KP & Bhava Jyotish"
 MY_FULL_NAME = "Rajiv Kumar"
-MY_TITLE = "Vedic"
-MY_CONTACT_PHONE = "+91 9914465143"  
-MY_EMAIL = "rajiv.kuralia@gmail.com"     
+MY_TITLE = "Licensed Mutual Fund Distributor & Vedic Astrologer"
+MY_CONTACT_PHONE = "+91 98765 43210"  
+MY_EMAIL = "rajiv.kumar@email.com"     
 MY_LOCATION = "Jalandhar, Punjab, India"
 
 # ⚠️ PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE:
-GOOGLE_SHEET_WEBAPP_URL = "" 
+GOOGLE_SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwx.../exec" 
 
 # --- ASTROLOGICAL CONSTANTS ---
 ZODIAC_SIGNS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]
@@ -242,13 +243,12 @@ with tab_indiv:
         elif not st.session_state.get("api_key"): 
             st.error("Missing API Key.")
         else:
-            # ---> SEND LEAD DATA TO GOOGLE SHEETS
             if GOOGLE_SHEET_WEBAPP_URL:
                 try:
                     lead_data = {"name": name, "mobile": mobile, "email": email, "dob": str(dob), "tob": str(tob), "place": place, "question": question}
                     requests.post(GOOGLE_SHEET_WEBAPP_URL, json=lead_data, timeout=5)
                 except Exception:
-                    pass # Continue generating chart even if sheet saves slowly
+                    pass 
                     
             with st.spinner("Calculating Chart..."):
                 chart_data = build_complete_kundali(name, dob, tob, place)
@@ -259,8 +259,20 @@ with tab_indiv:
 
     if "chart_data" in st.session_state and "last_reading" in st.session_state:
         st.success("Chart & Reading Generated Successfully!")
+        
         pdf_bytes = create_pdf_report(st.session_state["client_name"], st.session_state["last_reading"], "Individual Horoscope")
-        =True
+        b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
+        pdf_filename = f"{st.session_state['client_name']}_Kundali_Report.pdf"
+        html_button = f'''
+            <a href="data:application/pdf;base64,{b64_pdf}" download="{pdf_filename}" 
+               style="display: block; width: 100%; text-align: center; padding: 12px; 
+                      background-color: #b85d19; color: white; text-decoration: none; 
+                      border-radius: 6px; font-weight: bold; margin-bottom: 15px;">
+                📥 Download Reading as PDF
+            </a>
+        '''
+        st.markdown(html_button, unsafe_allow_html=True)
+        
         st.markdown(st.session_state["last_reading"])
         
         d1_houses = {i: [] for i in range(1, 13)}
@@ -268,17 +280,6 @@ with tab_indiv:
             d1_houses[p_info["d1_rashi_house"]].append(PLANET_SHORT[p_name] + ("(R)" if p_info["retrograde"] else ""))
         st.markdown(render_north_indian_chart_svg("Lagna Chart (D1)", st.session_state["chart_data"]["lagna"]["d1_sign_idx"], d1_houses), unsafe_allow_html=True)
 
-b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
-pdf_filename = f"{st.session_state['client_name']}_Kundali_Report.pdf"
-html_button = f'''
-    <a href="data:application/pdf;base64,{b64_pdf}" download="{pdf_filename}" 
-       style="display: block; width: 100%; text-align: center; padding: 12px; 
-              background-color: #b85d19; color: white; text-decoration: none; 
-              border-radius: 6px; font-weight: bold; margin-bottom: 15px;">
-        📥 Download Reading as PDF
-    </a>
-'''
-st.markdown(html_button, unsafe_allow_html=True)
 # --- TAB 2: KUNDALI MILAN ---
 with tab_milan:
     with st.form("milan_form"):
@@ -294,26 +295,4 @@ with tab_milan:
         fc1, fc2, fc3, fc4 = st.columns(4)
         m_name2 = fc1.text_input("Name 2")
         m_dob2 = fc2.date_input("DOB 2", value=None, min_value=datetime.date(1920,1,1))
-        m_tob2 = fc3.time_input("Time 2", value=None)
-        m_place2 = fc4.text_input("City 2")
-        
-        milan_submit = st.form_submit_button("⚖️ Check 36-Point Compatibility", use_container_width=True)
-
-    if milan_submit:
-        if not all([m_name1, m_dob1, m_tob1, m_place1, m_name2, m_dob2, m_tob2, m_place2]): st.error("⚠️ Fill all fields.")
-        elif not st.session_state.get("api_key"): st.error("Missing API Key.")
-        else:
-            with st.spinner(f"Calculating Charts..."):
-                chart1 = build_complete_kundali(m_name1, m_dob1, m_tob1, m_place1)
-                chart2 = build_complete_kundali(m_name2, m_dob2, m_tob2, m_place2)
-            with st.spinner("AI performing Ashtakoot Guna Milan..."):
-                st.session_state["milan_reading"] = get_milan_reading(st.session_state["api_key"], chart1, chart2, output_lang)
-                st.session_state["milan_names"] = f"{m_name1} & {m_name2}"
-
-    if "milan_reading" in st.session_state:
-        milan_pdf = create_pdf_report(st.session_state["milan_names"], st.session_state["milan_reading"], "Kundali Milan Report")
-        st.download_button(label="📥 Download Matchmaking PDF", data=milan_pdf, file_name=f"Compatibility.pdf", mime="application/pdf", use_container_width=True)
-        st.markdown(st.session_state["milan_reading"])
-
-st.markdown("---")
-st.markdown(f"<div style='text-align: center; color: #666; font-size: 14px;'><b>{MY_BRAND_NAME}</b><br>Consultations by <b>{MY_FULL_NAME}</b> ({MY_TITLE})<br>📞 WhatsApp/Call: {MY_CONTACT_PHONE}</div>", unsafe_allow_html=True)
+        m_tob2 = fc3
