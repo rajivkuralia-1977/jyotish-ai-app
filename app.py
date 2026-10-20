@@ -9,7 +9,7 @@ import pytz
 from google import genai
 from fpdf import FPDF
 import io
-
+base64
 # --- PAGE CONFIGURATION (Mobile Friendly) ---
 st.set_page_config(
     page_title="KP & Bhava Jyotish | Rajiv Kumar",
@@ -260,7 +260,7 @@ with tab_indiv:
     if "chart_data" in st.session_state and "last_reading" in st.session_state:
         st.success("Chart & Reading Generated Successfully!")
         pdf_bytes = create_pdf_report(st.session_state["client_name"], st.session_state["last_reading"], "Individual Horoscope")
-        st.download_button(label="📥 Download Reading as PDF", data=pdf_bytes, file_name=f"{st.session_state['client_name']}_Kundali_Report.pdf", mime="application/pdf", use_container_width=True)
+        =True
         st.markdown(st.session_state["last_reading"])
         
         d1_houses = {i: [] for i in range(1, 13)}
@@ -268,6 +268,17 @@ with tab_indiv:
             d1_houses[p_info["d1_rashi_house"]].append(PLANET_SHORT[p_name] + ("(R)" if p_info["retrograde"] else ""))
         st.markdown(render_north_indian_chart_svg("Lagna Chart (D1)", st.session_state["chart_data"]["lagna"]["d1_sign_idx"], d1_houses), unsafe_allow_html=True)
 
+b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
+pdf_filename = f"{st.session_state['client_name']}_Kundali_Report.pdf"
+html_button = f'''
+    <a href="data:application/pdf;base64,{b64_pdf}" download="{pdf_filename}" 
+       style="display: block; width: 100%; text-align: center; padding: 12px; 
+              background-color: #b85d19; color: white; text-decoration: none; 
+              border-radius: 6px; font-weight: bold; margin-bottom: 15px;">
+        📥 Download Reading as PDF
+    </a>
+'''
+st.markdown(html_button, unsafe_allow_html=True)
 # --- TAB 2: KUNDALI MILAN ---
 with tab_milan:
     with st.form("milan_form"):
