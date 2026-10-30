@@ -5,3 +5,6 @@ timezonefinder
 pytz
 google-genai
 fpdf2
+streamlit
+fpdf2
+requests
