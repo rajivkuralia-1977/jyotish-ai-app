@@ -515,11 +515,11 @@ with st.form("k_form"):
     
     c1, c2 = st.columns(2)
     with c1:
-        c_name = st.text_input("Full Name of Jataka", "Vaanya Bhagat")
-        c_dob = st.text_input("Date of Birth (DD/MM/YYYY)", "29/09/2010")
+        c_name = st.text_input("Full Name of Jataka", "")
+        c_dob = st.text_input("Date of Birth (DD/MM/YYYY)", "")
     with c2:
-        c_tob = st.text_input("Time of Birth (HH:MM 24-Hr)", "19:42")
-        c_pob = st.text_input("Place of Birth (City, State)", "Jalandhar, Punjab, India")
+        c_tob = st.text_input("Time of Birth (HH:MM 24-Hr)", "")
+        c_pob = st.text_input("Place of Birth (City, State)", "")
     c_phone = st.text_input("Client WhatsApp / Contact Number", "")
     sub = st.form_submit_button("Generate 23-Page Master Kundali PDF")
 
