@@ -183,7 +183,7 @@ def get_html_content(name, dob, tob, pob, language):
         <div style="margin-top:30px; background:#8c2314; color:#fff; padding:15px; border-radius:8px; width:80%; margin-left:auto; margin-right:auto;">
             <h3 style="margin:0;">{'निर्माता: राजीव कुमार' if lang_flag == 'HI' else 'CREATED BY: RAJIV KUMAR'}</h3>
             <p style="margin:5px 0;">{'संपर्क एवं परामर्श' if lang_flag == 'HI' else 'Contact & Consultation'}: +91-9914465143</p>
-            <p style="margin:0; font-size:8pt; color:#f0dcd8;">KP & Bhava Jyotish Research Wing | Jalandhar, Punjab</p>
+            <p style="margin:0; font-size:8pt; color:#f0dcd8;">KP & Bhava Jyotish Multi-System Synthesis| Jalandhar, Punjab</p>
         </div>
     </div>
     """
