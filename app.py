@@ -1,547 +1,501 @@
 import streamlit as st
-from weasyprint import HTML, CSS
+from fpdf import FPDF
 import datetime
 import requests
 import os
 
 WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxkPrTQK017yE2WJDo65jO6Ulpw2ESpokbJuUWltvLCSKlq_vKFavc3Dl3NNh2duyYF2g/exec"
+FONT_URL = "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansDevanagari/NotoSansDevanagari-Regular.ttf"
+FONT_FILE = "NotoSansDevanagari-Regular.ttf"
 
-def get_html_content(name, dob, tob, pob, language):
-    lang_flag = "HI" if language == "Hindi" else "EN"
-    
-    # CSS styling to mimic the exact Help Book format with Swastik watermarks and perfect Hindi font
-    css = """
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&family=Helvetica:wght@400;700&display=swap');
-    
-    @page {
-        size: A4;
-        margin: 20mm 15mm;
-        @top-center {
-            content: "KP BHAVA JYOTISH | ADVANCED KUNDALI HELP BOOK | """ + name.upper() + """";
-            font-family: 'Helvetica', 'Noto Sans Devanagari', sans-serif;
-            font-size: 8pt;
-            font-weight: bold;
-            color: #82321e;
-            border-bottom: 1px solid #b48246;
-            padding-bottom: 5px;
+# Download Hindi Font dynamically if not present
+if not os.path.exists(FONT_FILE):
+    try:
+        r = requests.get(FONT_URL, timeout=10)
+        with open(FONT_FILE, "wb") as f:
+            f.write(r.content)
+    except Exception:
+        pass
+
+def cln(txt):
+    # Native utf-8 preserved for perfect Hindi shaping
+    return str(txt).replace("\u2013", "-").replace("\u2014", "-")
+
+class KundaliPDF(FPDF):
+    def __init__(self, name, dob, tob, pob, language):
+        super().__init__("P", "mm", "A4")
+        self.c_name = cln(name)
+        self.c_dob = cln(dob)
+        self.c_tob = cln(tob)
+        self.c_pob = cln(pob)
+        self.language = language
+        self.set_auto_page_break(False)
+        
+        # ACTIVATE HARFBUZZ TEXT SHAPING FOR PERFECT HINDI MATRAS
+        try:
+            self.set_text_shaping(True)
+        except AttributeError:
+            pass
+
+        # Load fonts and explicitly register all styles to prevent crash
+        if os.path.exists(FONT_FILE):
+            self.add_font("Hindi", "", FONT_FILE)
+            self.add_font("Hindi", "B", FONT_FILE)
+            self.add_font("Hindi", "I", FONT_FILE)
+            self.has_hindi = True
+        else:
+            self.has_hindi = False
+
+    def use_font(self, style="", size=9):
+        if self.language == "Hindi" and self.has_hindi:
+            self.set_font("Hindi", style, size)
+        else:
+            self.set_font("Helvetica", style, size)
+
+    def swastik(self, x, y, s, col, lw):
+        self.set_draw_color(*col)
+        self.set_line_width(lw)
+        h = s / 2.0
+        self.line(x - h, y, x + h, y)
+        self.line(x, y - h, x, y + h)
+        self.line(x, y - h, x + h, y - h)
+        self.line(x + h, y, x + h, y + h)
+        self.line(x, y + h, x - h, y + h)
+        self.line(x - h, y, x - h, y - h)
+        q = h / 2.0
+        r = lw * 0.8
+        self.set_fill_color(*col)
+        for dx, dy in [(-q, -q), (q, -q), (-q, q), (q, q)]:
+            self.ellipse(x + dx - r/2, y + dy - r/2, r, r, "F")
+
+    def ganesha(self, x, y, s):
+        self.set_draw_color(180, 40, 20)
+        self.set_fill_color(255, 240, 215)
+        self.set_line_width(1.2)
+        self.ellipse(x - s/2, y - s/2, s, s, "DF")
+        self.set_line_width(0.6)
+        self.ellipse(x - s/2 + 3, y - s/2 + 3, s - 6, s - 6, "D")
+        self.set_line_width(1.5)
+        self.line(x - 10, y - 8, x + 10, y - 8)
+        self.line(x - 12, y - 3, x + 12, y - 3)
+        self.line(x - 10, y + 2, x + 10, y + 2)
+        self.line(x, y - 14, x, y + 12)
+        self.line(x, y + 12, x + 6, y + 15)
+        self.set_fill_color(180, 40, 20)
+        self.ellipse(x - 2, y - 20, 4, 4, "F")
+
+    def chart(self, x, y, s, title, asc_rashi, data):
+        self.use_font("B", 9.5)
+        self.set_text_color(120, 30, 20)
+        self.set_xy(x, y - 7)
+        self.cell(s, 6, cln(title), 0, 0, "C")
+        
+        self.set_draw_color(140, 50, 30)
+        self.set_line_width(0.6)
+        self.rect(x, y, s, s)
+        self.line(x, y, x + s, y + s)
+        self.line(x + s, y, x, y + s)
+        h = s / 2.0
+        self.line(x + h, y, x + s, y + h)
+        self.line(x + s, y + h, x + h, y + s)
+        self.line(x + h, y + s, x, y + h)
+        self.line(x, y + h, x + h, y)
+        
+        # Proportional mapping for Rashi numbers (rx,ry) and Planets (px,py) inside a 100x100 grid
+        scale = s / 100.0
+        positions = {
+            1: (50, 8, 50, 24), 2: (15, 8, 26, 16), 3: (8, 15, 15, 26),
+            4: (8, 52, 24, 50), 5: (8, 88, 15, 75), 6: (15, 96, 26, 85),
+            7: (50, 96, 50, 78), 8: (85, 96, 74, 85), 9: (94, 88, 85, 75),
+            10: (94, 52, 76, 50), 11: (94, 15, 85, 25), 12: (85, 8, 74, 16)
         }
-        @bottom-left {
-            content: "Created by Rajiv Kumar | Contact: 9914465143";
-            font-family: 'Helvetica', 'Noto Sans Devanagari', sans-serif;
-            font-size: 8pt;
-            color: #6e2814;
-            border-top: 1px solid #b48246;
-            padding-top: 5px;
-        }
-        @bottom-right {
-            content: "Page " counter(page) " of 23";
-            font-family: 'Helvetica', 'Noto Sans Devanagari', sans-serif;
-            font-size: 8pt;
-            color: #6e2814;
-            border-top: 1px solid #b48246;
-            padding-top: 5px;
-        }
-        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50" y="50" font-size="80" text-anchor="middle" dominant-baseline="middle" fill="%23f6ecde" opacity="0.4">卐</text></svg>');
-        background-position: center;
-        background-size: 70%;
-        background-repeat: no-repeat;
-    }
-    
-    @page:first {
-        @top-center { content: ""; border: none; }
-        @bottom-left { content: ""; border: none; }
-        @bottom-right { content: ""; border: none; }
-    }
-    
-    body {
-        font-family: 'Helvetica', 'Noto Sans Devanagari', sans-serif;
-        color: #232323;
-        line-height: 1.4;
-    }
-    
-    .cover-page {
-        text-align: center;
-        page-break-after: always;
-        padding-top: 50px;
-    }
-    
-    .cover-title {
-        color: #78190f;
-        font-size: 24pt;
-        font-weight: bold;
-        margin-top: 100px;
-    }
-    
-    .chapter-header {
-        background-color: #f8eee1;
-        border: 1px solid #a03c1e;
-        padding: 8px 12px;
-        margin-bottom: 15px;
-        page-break-before: always;
-    }
-    
-    .chapter-title {
-        color: #8c1e14;
-        font-size: 12pt;
-        font-weight: bold;
-        margin: 0;
-    }
-    
-    .chapter-subtitle {
-        color: #5a3c28;
-        font-size: 9pt;
-        font-style: italic;
-        margin: 2px 0 0 0;
-    }
-    
-    .block-head {
-        color: #8c2814;
-        font-size: 10pt;
-        font-weight: bold;
-        margin-top: 15px;
-        margin-bottom: 5px;
-    }
-    
-    .block-body {
-        font-size: 9pt;
-        text-align: justify;
-        margin-bottom: 10px;
-    }
-    
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 10px;
-        margin-bottom: 15px;
-        font-size: 8pt;
-    }
-    
-    th {
-        background-color: #96321e;
-        color: white;
-        border: 1px solid #78190f;
-        padding: 5px;
-        text-align: center;
-    }
-    
-    td {
-        border: 1px solid #c8a08c;
-        padding: 5px;
-        text-align: center;
-    }
-    
-    tr:nth-child(even) {
-        background-color: #fcf6ee;
-    }
-    
-    .chart-container {
-        width: 100%;
-        display: table;
-        margin-top: 20px;
-    }
-    .chart-box {
-        display: table-cell;
-        width: 50%;
-        text-align: center;
-    }
-    """
-
-    # --- COVER PAGE ---
-    cover_mantra = "वक्रतुण्ड महाकाय सूर्यकोटि समप्रभ।<br>निर्विघ्नं कुरु मे देव सर्वकार्येषु सर्वदा॥" if lang_flag == "HI" else "Vakratunda Mahakaya Suryakoti Samaprabha<br>Nirvighnam Kurume Deva Sarva Karyeshu Sarvada"
-    cover_heading = "|| श्री गणेशाय नमः ||" if lang_flag == "HI" else "|| SHRI GANESHAYA NAMAH ||"
-    
-    html = f"""
-    <html>
-    <head><style>{css}</style></head>
-    <body>
-    <div class="cover-page">
-        <h2 style="color:#a02814;">{cover_heading}</h2>
-        <p style="color:#64321e; font-size:11pt; font-style:italic;">{cover_mantra}</p>
         
-        <!-- Sacred Mandala SVG -->
-        <svg width="150" height="150" viewBox="0 0 100 100" style="margin-top:30px;">
-            <circle cx="50" cy="50" r="45" fill="#fff0d7" stroke="#b42814" stroke-width="2"/>
-            <circle cx="50" cy="50" r="40" fill="none" stroke="#b42814" stroke-width="1" stroke-dasharray="4 2"/>
-            <path d="M40 30 L60 30 M35 45 L65 45 M40 60 L60 60 M50 20 L50 70 L55 75" stroke="#b42814" stroke-width="3" fill="none"/>
-            <circle cx="50" cy="15" r="3" fill="#b42814"/>
-        </svg>
-
-        <div class="cover-title">ADVANCED KUNDALI HELP BOOK ({language.upper()})</div>
-        <p style="color:#a05a1e; font-weight:bold;">Multi-System Synthesis: KP | BPHS | Jaimini | Phaladeepika</p>
-        
-        <div style="margin-top:40px; background:#faf2e6; border:2px solid #a05a28; padding:15px; border-radius:10px; text-align:left; width:80%; margin-left:auto; margin-right:auto;">
-            <h3 style="text-align:center; color:#781e14; margin-top:0;">{'जातक जन्म विवरण' if lang_flag == 'HI' else 'JATAKA BIRTH PARTICULARS'}</h3>
-            <table style="border:none; background:transparent;">
-                <tr style="background:transparent;"><td style="text-align:left; border:none; font-weight:bold; font-size:10pt;">{'नाम' if lang_flag == 'HI' else 'Name'} :</td><td style="text-align:left; border:none; font-size:10pt;">{name}</td></tr>
-                <tr style="background:transparent;"><td style="text-align:left; border:none; font-weight:bold; font-size:10pt;">{'जन्म तिथि' if lang_flag == 'HI' else 'Date of Birth'} :</td><td style="text-align:left; border:none; font-size:10pt;">{dob}</td></tr>
-                <tr style="background:transparent;"><td style="text-align:left; border:none; font-weight:bold; font-size:10pt;">{'जन्म समय' if lang_flag == 'HI' else 'Time of Birth'} :</td><td style="text-align:left; border:none; font-size:10pt;">{tob}</td></tr>
-                <tr style="background:transparent;"><td style="text-align:left; border:none; font-weight:bold; font-size:10pt;">{'जन्म स्थान' if lang_flag == 'HI' else 'Place of Birth'} :</td><td style="text-align:left; border:none; font-size:10pt;">{pob}</td></tr>
-                <tr style="background:transparent;"><td style="text-align:left; border:none; font-weight:bold; font-size:10pt;">{'अयनांश' if lang_flag == 'HI' else 'Ayanamsa'} :</td><td style="text-align:left; border:none; font-size:10pt;">KP New / Lahiri</td></tr>
-            </table>
-        </div>
-        
-        <div style="margin-top:30px; background:#8c2314; color:#fff; padding:15px; border-radius:8px; width:80%; margin-left:auto; margin-right:auto;">
-            <h3 style="margin:0;">{'निर्माता: राजीव कुमार' if lang_flag == 'HI' else 'CREATED BY: RAJIV KUMAR'}</h3>
-            <p style="margin:5px 0;">{'संपर्क एवं परामर्श' if lang_flag == 'HI' else 'Contact & Consultation'}: +91-9914465143</p>
-            <p style="margin:0; font-size:8pt; color:#f0dcd8;">KP & Bhava Jyotish Multi-System Synthesis| Jalandhar, Punjab</p>
-        </div>
-    </div>
-    """
-
-    # --- CONTENT PAGES (HINDI) ---
-    if lang_flag == "HI":
-        html += """
-        <div class="chapter-header">
-            <p class="chapter-title">अध्याय 01: मास्टर विषय सूची</p>
-            <p class="chapter-subtitle">6 शास्त्रीय प्रणालियाँ एक एकीकृत निर्णय में परिवर्तित होती हैं</p>
-        </div>
-        <table>
-            <tr><th>पृष्ठ</th><th>अध्याय और अनुभाग सामग्री</th></tr>
-            <tr><td>पृष्ठ 01</td><td>पवित्र मंगलाचरण, जातक विवरण और निर्माता विवरण</td></tr>
-            <tr><td>पृष्ठ 02</td><td>मास्टर विषय सूची और मल्टी-सिस्टम कार्यप्रणाली</td></tr>
-            <tr><td>पृष्ठ 03</td><td>अवकाहड़ा चक्र, पंचांग डिकोडेड और तीन स्तंभ</td></tr>
-            <tr><td>पृष्ठ 04</td><td>विजुअल चार्ट: लग्न (D1) और नवमांश (D9)</td></tr>
-            <tr><td>पृष्ठ 05</td><td>विजुअल चार्ट: दशमांश (D10), सप्तमांश (D7) और वर्ग</td></tr>
-            <tr><td>पृष्ठ 06</td><td>ग्रहीय स्थिति तालिका और सर्वाष्टकवर्ग मैट्रिक्स</td></tr>
-            <tr><td>पृष्ठ 07</td><td>व्यक्तिगत ग्रहीय प्रोफाइल: सूर्य, चंद्र, मंगल, बुध, गुरु</td></tr>
-            <tr><td>पृष्ठ 08</td><td>व्यक्तिगत ग्रहीय प्रोफाइल: शुक्र, शनि, राहु, केतु</td></tr>
-            <tr><td>पृष्ठ 09</td><td>भावफल (भाव 1 से 6): स्थिति और स्वामित्व</td></tr>
-            <tr><td>पृष्ठ 10</td><td>भावफल (भाव 7 से 12): स्थिति और स्वामित्व</td></tr>
-            <tr><td>पृष्ठ 11</td><td>मल्टी-सिस्टम संश्लेषण: एकीकृत निर्णय बनाम संघर्ष</td></tr>
-            <tr><td>पृष्ठ 12</td><td>जैमिनी चर कारक: 7 आत्मा संकेतक</td></tr>
-            <tr><td>पृष्ठ 13</td><td>प्रेम, विवाह, दारकारक और मांगलिक मूल्यांकन</td></tr>
-            <tr><td>पृष्ठ 14</td><td>करियर कॉलिंग, धन वास्तुकला और राज योग</td></tr>
-            <tr><td>पृष्ठ 15</td><td>कर्म अक्ष (राहु-केतु) और साढ़े साती चरण</td></tr>
-            <tr><td>पृष्ठ 16</td><td>विंशोत्तरी दशा समयरेखा (जन्म से 2048 तक)</td></tr>
-            <tr><td>पृष्ठ 17</td><td>विंशोत्तरी दशा डीप-डाइव (2048 से 2092 तक)</td></tr>
-            <tr><td>पृष्ठ 18</td><td>कालानुक्रमिक जीवन घटना समयरेखा (विशिष्ट आयु)</td></tr>
-            <tr><td>पृष्ठ 19</td><td>केपी कस्पल उप-स्वामी इंटरलिंक्स और सिग्निफिकेटर्स</td></tr>
-            <tr><td>पृष्ठ 20</td><td>षड्बल, भाव बल और ग्रहीय अवस्थाएं</td></tr>
-            <tr><td>पृष्ठ 21</td><td>5-वर्षीय वर्षफल और गोचर पूर्वानुमान (2026-2031)</td></tr>
-            <tr><td>पृष्ठ 22</td><td>वैदिक अंकशास्त्र और पूर्ण क्या करें और क्या न करें</td></tr>
-            <tr><td>पृष्ठ 23</td><td>वैदिक उपाय हेल्प बुक और कानूनी अस्वीकरण</td></tr>
-        </table>
-        <p class="block-head">मल्टी-सिस्टम क्रॉस-सत्यापन क्यों मायने रखता है</p>
-        <p class="block-body">यह हेल्प बुक बीपीएचएस, केपी, जैमिनी सूत्र, फलदीपिका, बृहत जातक और लघु पाराशरी का क्रॉस-एग्जामिनेशन करती है। सभी प्रणालियों द्वारा पुष्ट भविष्यवाणियों को 'एकीकृत निर्णय' के रूप में चिह्नित किया गया है, जबकि तकनीकी भिन्नताओं को पारदर्शी रूप से समझाया गया है।</p>
-
-        <div class="chapter-header">
-            <p class="chapter-title">अध्याय 02: अवकाहड़ा चक्र और पंचांग</p>
-            <p class="chapter-subtitle">बुनियादी खगोलीय और जन्म कुंडली संरेखण</p>
-        </div>
-        <table>
-            <tr><th>पैरामीटर</th><th>जन्म मूल्य</th><th>पैरामीटर</th><th>जन्म मूल्य</th></tr>
-            <tr><td>लग्न (Ascendant)</td><td>वृषभ 14° 52'</td><td>लग्न स्वामी</td><td>शुक्र (Venus)</td></tr>
-            <tr><td>चंद्र राशि (Rashi)</td><td>वृषभ 06° 18'</td><td>राशि स्वामी</td><td>शुक्र (Venus)</td></tr>
-            <tr><td>नक्षत्र और पद</td><td>कृतिका - पद 3</td><td>नक्षत्र स्वामी</td><td>सूर्य (Sun)</td></tr>
-            <tr><td>जन्म तिथि</td><td>कृष्ण सप्तमी</td><td>वार (दिन)</td><td>बुधवार / शुक्र का प्रभाव</td></tr>
-            <tr><td>योग और करण</td><td>वरीयान / बालव</td><td>गण और योनि</td><td>राक्षस / मेष</td></tr>
-            <tr><td>नाड़ी और वर्ण</td><td>अंत्य / वैश्य</td><td>पाया (पैर)</td><td>स्वर्ण (Gold)</td></tr>
-            <tr><td>सूर्य राशि (वैदिक)</td><td>कन्या (Virgo)</td><td>सक्रिय दशा</td><td>शनि / बुध</td></tr>
-        </table>
-        <p class="block-head">1. वार और तिथि का प्रभाव</p>
-        <p class="block-body">मजबूत शुक्र और बुध के प्रभाव के साथ जन्मे, जातक में परिष्कृत सौंदर्य संवेदनाओं के साथ तेज विश्लेषणात्मक बुद्धि है। कृष्ण पक्ष का जन्म प्राकृतिक लचीलापन प्रदान करता है, जो शुरुआती बाधाओं को सफलता की सीढ़ियों में बदल देता है।</p>
-        <p class="block-head">2. लग्न और राशि स्तंभ (वृषभ)</p>
-        <p class="block-body">वृषभ लग्न और उच्च के चंद्रमा के साथ, आप ईंट दर ईंट जीवन का निर्माण करते हैं। आप शांत विश्वसनीयता, दृढ़ संकल्प और गुणवत्ता के प्रति रुचि प्रदर्शित करते हैं।</p>
-        <p class="block-head">3. नक्षत्र स्तंभ (कृतिका / रोहिणी धुरी)</p>
-        <p class="block-body">यह तारकीय हस्ताक्षर रचनात्मक उर्वरता के साथ-साथ सत्य की धार प्रदान करता है। आप झूठे दिखावे को सीधे काटते हैं और अपने परिवार की दृढ़ता से रक्षा करते हैं।</p>
-
-        <!-- CHART RENDER WORKAROUND FOR WEASYPRINT HTML -->
-        <div class="chapter-header">
-            <p class="chapter-title">अध्याय 03: विजुअल चार्ट (लग्न और नवमांश)</p>
-            <p class="chapter-subtitle">उत्तर भारतीय शैली नेटल और डिविजनल ब्लूप्रिंट</p>
-        </div>
-        <div class="chart-container">
-            <div class="chart-box">
-                <h4 style="color:#781e14; margin-bottom:5px;">लग्न चार्ट (D1 - राशि)</h4>
-                <svg viewBox="0 0 100 100" width="200" height="200">
-                    <rect x="0" y="0" width="100" height="100" fill="none" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="0" y1="0" x2="100" y2="100" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="100" y1="0" x2="0" y2="100" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="50" y1="0" x2="100" y2="50" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="100" y1="50" x2="50" y2="100" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="50" y1="100" x2="0" y2="50" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="0" y1="50" x2="50" y2="0" stroke="#8c2814" stroke-width="1"/>
-                    <text x="50" y="25" font-size="6" text-anchor="middle">As 14° Mo 6°</text>
-                    <text x="25" y="10" font-size="6" text-anchor="middle">Ke 9°</text>
-                    <text x="10" y="75" font-size="6" text-anchor="middle">Su12° Sa14°</text>
-                    <text x="25" y="88" font-size="6" text-anchor="middle">Me 2° Ve14°</text>
-                    <text x="50" y="75" font-size="6" text-anchor="middle">Ma 29°</text>
-                    <text x="75" y="88" font-size="6" text-anchor="middle">Ra 9°</text>
-                    <text x="88" y="25" font-size="6" text-anchor="middle">Ju(R) 1°</text>
-                </svg>
-            </div>
-            <div class="chart-box">
-                <h4 style="color:#781e14; margin-bottom:5px;">नवमांश चार्ट (D9)</h4>
-                <svg viewBox="0 0 100 100" width="200" height="200">
-                    <rect x="0" y="0" width="100" height="100" fill="none" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="0" y1="0" x2="100" y2="100" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="100" y1="0" x2="0" y2="100" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="50" y1="0" x2="100" y2="50" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="100" y1="50" x2="50" y2="100" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="50" y1="100" x2="0" y2="50" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="0" y1="50" x2="50" y2="0" stroke="#8c2814" stroke-width="1"/>
-                    <text x="50" y="25" font-size="6" text-anchor="middle">As(Tau)</text>
-                    <text x="25" y="10" font-size="6" text-anchor="middle">Su</text>
-                    <text x="10" y="25" font-size="6" text-anchor="middle">Ra</text>
-                    <text x="50" y="75" font-size="6" text-anchor="middle">Me</text>
-                    <text x="88" y="75" font-size="6" text-anchor="middle">Ke</text>
-                    <text x="75" y="50" font-size="6" text-anchor="middle">Mo Sa</text>
-                    <text x="88" y="25" font-size="6" text-anchor="middle">Ve</text>
-                    <text x="75" y="10" font-size="6" text-anchor="middle">Ma Ju</text>
-                </svg>
-            </div>
-        </div>
-        <p class="block-head">तकनीकी चार्ट संश्लेषण (घटनाएं क्यों होती हैं)</p>
-        <p class="block-body">1. वर्गोत्तम लग्न (D1 और D9 में वृषभ): बीपीएचएस और फलदीपिका जातक को आंतरिक और बाहरी रूप से अडिग घोषित करते हैं। स्वास्थ्य और स्थिति दोगुनी मजबूत होती है। 2. 5वें भाव में सूर्य-शनि-बुध क्लस्टर (कन्या): 4था स्वामी (सूर्य), उच्च 2रा/5वां स्वामी (बुध), और योगकारक 9वां/10वां स्वामी (शनि) 5वें त्रिकोण में मिलते हैं, जो तकनीकी और वित्तीय महारत के लिए एक प्रमुख राज योग बनाते हैं। 3. 6वें भाव में स्वराशि शुक्र (तुला): लग्न स्वामी शुक्र अपनी मूलत्रिकोण राशि तुला में बैठता है, जो दुश्मनों को बेअसर करता है और प्रतियोगी परीक्षा में जीत सुनिश्चित करता है।</p>
-
-        <div class="chapter-header">
-            <p class="chapter-title">अध्याय 05: ग्रहीय स्थिति और अष्टकवर्ग</p>
-            <p class="chapter-subtitle">सटीक नाक्षत्र देशांतर, नक्षत्र स्वामी, उप-स्वामी और बिंदु</p>
-        </div>
-        <table>
-            <tr><th>ग्रह</th><th>राशि</th><th>डिग्री</th><th>नक्षत्र</th><th>राशि स्वामी</th><th>नक्षत्र स्वामी</th><th>उप-स्वामी</th><th>स्थिति</th></tr>
-            <tr><td>लग्न</td><td>वृषभ</td><td>14° 52'</td><td>रोहिणी-2</td><td>शुक्र</td><td>चंद्रमा</td><td>गुरु</td><td>वर्गोत्तम</td></tr>
-            <tr><td>सूर्य</td><td>कन्या</td><td>12° 06'</td><td>हस्त-1</td><td>बुध</td><td>चंद्रमा</td><td>चंद्रमा</td><td>मित्र</td></tr>
-            <tr><td>चंद्र</td><td>वृषभ</td><td>06° 18'</td><td>कृतिका-3</td><td>शुक्र</td><td>सूर्य</td><td>शुक्र</td><td>उच्च (Exalted)</td></tr>
-            <tr><td>मंगल</td><td>तुला</td><td>29° 18'</td><td>विशाखा-3</td><td>शुक्र</td><td>गुरु</td><td>मंगल</td><td>आत्मकारक</td></tr>
-            <tr><td>बुध</td><td>कन्या</td><td>02° 14'</td><td>उ.फाल्गुनी</td><td>बुध</td><td>सूर्य</td><td>शनि</td><td>उच्च (Exalted)</td></tr>
-            <tr><td>गुरु(R)</td><td>मीन</td><td>01° 52'</td><td>पू.भाद्र-4</td><td>गुरु</td><td>गुरु</td><td>शुक्र</td><td>स्वराशि</td></tr>
-            <tr><td>शुक्र</td><td>तुला</td><td>14° 10'</td><td>स्वाति-3</td><td>शुक्र</td><td>राहु</td><td>बुध</td><td>मूलत्रिकोण</td></tr>
-            <tr><td>शनि</td><td>कन्या</td><td>14° 02'</td><td>हस्त-2</td><td>बुध</td><td>चंद्रमा</td><td>राहु</td><td>योगकारक</td></tr>
-            <tr><td>राहु</td><td>धनु</td><td>09° 11'</td><td>मूल-3</td><td>गुरु</td><td>केतु</td><td>शुक्र</td><td>8H शोध</td></tr>
-            <tr><td>केतु</td><td>मिथुन</td><td>09° 11'</td><td>आर्द्रा-1</td><td>बुध</td><td>राहु</td><td>राहु</td><td>2H विरक्ति</td></tr>
-        </table>
-        <p class="block-head">सर्वाष्टकवर्ग सारांश (प्रति भाव बिंदु बल)</p>
-        <p class="block-body">H1: 31 | H2: 27 | H3: 30 | H4: 29 | H5: 26 | H6: 32 | H7: 25 | H8: 22 | H9: 29 | H10: 33 | H11: 35 | H12: 20.<br>कारण: 10वें भाव में 33 बिंदु और 11वें भाव में 35 बिंदु (फलदीपिका नियम) यह गारंटी देते हैं कि करियर के प्रयास उच्च वित्तीय लाभ देते हैं।</p>
-
-        <div class="chapter-header">
-            <p class="chapter-title">अध्याय 10: मल्टी-सिस्टम पीयर रिव्यू और एकीकृत फैसला</p>
-            <p class="chapter-subtitle">केपी, बीपीएचएस, जैमिनी, फलदीपिका और लघु पाराशरी का क्रॉस-एग्जामिनेशन</p>
-        </div>
-        <table>
-            <tr><th>जीवन क्षेत्र</th><th>बीपीएचएस / पाराशरी</th><th>केपी सिस्टम</th><th>जैमिनी सूत्र</th><th>अंतिम फैसला</th></tr>
-            <tr><td>धन और स्थिति</td><td>उच्च 2L/5L + 11L 11H में</td><td>11वां उप-स्वामी गुरु/शुक्र</td><td>AK/AmK 11H से जुड़ा</td><td>एकीकृत: उच्च धन</td></tr>
-            <tr><td>करियर डोमेन</td><td>5H में योगकारक शनि</td><td>10वां उप-स्वामी 5-6-10-11</td><td>10H में कारकांश</td><td>एकीकृत: कार्यकारी</td></tr>
-            <tr><td>विवाह का समय</td><td>शनि की तीसरी दृष्टि देरी करती है</td><td>7वां उप-स्वामी 2-7-11</td><td>स्वराशि में DK गुरु</td><td>संघर्ष: आयु 25 बनाम 28</td></tr>
-            <tr><td>मांगलिक प्रभाव</td><td>मंगल 7H को प्रभावित करता है</td><td>गुरु की 9वीं दृष्टि बचाती है</td><td>मजबूत DK रक्षा करता है</td><td>एकीकृत: रद्द (Cancelled)</td></tr>
-        </table>
-        <p class="block-head">1. जहां सभी 6 सिस्टम सहमत हैं (100% एकीकृत फैसले)</p>
-        <p class="block-body">बौद्धिक और वित्तीय महारत: बीपीएचएस (उच्च दूसरा/5वां स्वामी बुध + स्व-राशि 11वां स्वामी गुरु), केपी, फलदीपिका (11H में 35 बिंदु), और जैमिनी सर्वसम्मति से उच्च वित्तीय स्वतंत्रता और कार्यकारी अधिकार की पुष्टि करते हैं।</p>
-        <p class="block-head">2. जहां सिस्टम भिन्न होते हैं और तकनीकी तर्क</p>
-        <p class="block-body">विवाह का समय: बीपीएचएस देरी के कारण के रूप में 7वें भाव पर शनि की तीसरी दृष्टि को चिह्नित करता है। हालांकि, केपी और फलदीपिका इस डर को खत्म करते हैं क्योंकि मीन राशि में गुरु 7वें भाव पर सटीक 9वीं त्रिकोणीय दृष्टि डालता है, जो एक दिव्य ढाल के रूप में कार्य करता है। फैसला: 26-28 वर्ष की आयु के आसपास विवाह स्थिर और समृद्ध होगा।</p>
-
-        <div class="chapter-header">
-            <p class="chapter-title">अध्याय 22: वैदिक उपाय और कानूनी घोषणा</p>
-            <p class="chapter-subtitle">व्यावहारिक ग्रहीय संरेखण और अनिवार्य अस्वीकरण</p>
-        </div>
-        <table>
-            <tr><th>श्रेणी</th><th>सिफारिश</th><th>ज्योतिषीय उद्देश्य</th></tr>
-            <tr><td>रत्न</td><td>हीरा / सफेद जिक्रोन या पन्ना</td><td>लग्न स्वामी शुक्र और उच्च बुध को मजबूत करता है</td></tr>
-            <tr><td>रुद्राक्ष</td><td>6 मुखी + 4 मुखी रुद्राक्ष</td><td>शुक्र की कृपा और बुध की बुद्धि को संतुलित करता है</td></tr>
-            <tr><td>दैनिक मंत्र</td><td>ओम शुक्राय नमः / ओम बुधाय नमः</td><td>शुक्रवार और बुधवार को 27 या 108 बार जाप करें</td></tr>
-            <tr><td>साढ़े साती ढाल</td><td>हनुमान चालीसा और शनि गायत्री</td><td>साढ़े साती को सुचारू रखने के लिए शनिवार को पाठ करें</td></tr>
-            <tr><td>परोपकारी कार्य</td><td>हरी मूंग दाल या किताबें दान करें</td><td>धन योग को खोलने के लिए बुधवार को करें</td></tr>
-        </table>
-        <p class="block-head">इष्टदेव और आध्यात्मिक संरेखण</p>
-        <p class="block-body">5वें भाव में बुध और शनि और 11वें भाव में मीन राशि में गुरु के साथ, भगवान गणेश और देवी लक्ष्मी-नारायण की प्रार्थना करने से शांति मिलती है।</p>
-
-        <div style="background-color: #f5f0eb; border: 1px solid #8c1e14; padding: 15px; margin-top: 30px;">
-            <h4 style="text-align: center; color: #8c1414; margin-top: 0;">अनिवार्य घोषणा और कानूनी अस्वीकरण</h4>
-            <p style="font-size: 8pt; color: #282828; text-align: justify; margin: 0;">यह एडवांस्ड कुंडली हेल्प बुक राजीव कुमार (संपर्क: 9914465143) द्वारा संकलित और बनाई गई है। यह स्पष्ट रूप से घोषित किया जाता है कि इस रिपोर्ट के निर्माता एक पेशेवर या प्रमाणित वाणिज्यिक ज्योतिषी नहीं हैं। यह रिपोर्ट पूरी तरह से शैक्षिक, आध्यात्मिक और आत्म-चिंतनशील मार्गदर्शन के लिए शास्त्रीय ज्योतिषीय पुस्तकों, इंटरनेट पर सार्वजनिक रूप से उपलब्ध संसाधनों, गणितीय एल्गोरिदम और जनरेटिव एआई की मदद से तैयार की गई है। बीपीएचएस, केपी, जैमिनी और फलदीपिका में ज्योतिषीय व्याख्याएं गारंटीकृत निश्चित परिणामों के बजाय सांकेतिक प्रवृत्तियां हैं। इस दस्तावेज़ में कुछ भी चिकित्सा, कानूनी या लाइसेंस प्राप्त वित्तीय सलाह नहीं है। इस रिपोर्ट के निर्माता और संपादक (राजीव कुमार) कोई दायित्व नहीं लेते हैं और इस रिपोर्ट में डेटा या जानकारी से उत्पन्न होने वाले किसी भी निर्णय या परिणाम के लिए जिम्मेदार नहीं हैं।</p>
-        </div>
-        """
-        
-    # --- CONTENT PAGES (ENGLISH) ---
-    else:
-        html += """
-        <div class="chapter-header">
-            <p class="chapter-title">CHAPTER 01: MASTER TABLE OF CONTENTS</p>
-            <p class="chapter-subtitle">6 Classical Systems Converging Into One Unified Verdict</p>
-        </div>
-        <table>
-            <tr><th>Page</th><th>Chapter & Section Contents</th></tr>
-            <tr><td>Page 01</td><td>Sacred Invocation, Jataka Particulars & Creator Details</td></tr>
-            <tr><td>Page 02</td><td>Master Table of Contents & Multi-System Methodology</td></tr>
-            <tr><td>Page 03</td><td>Avakahada Chakra, Panchang Decoded & Three Pillars</td></tr>
-            <tr><td>Page 04</td><td>Visual Charts: Lagna (D1) & Navamsha (D9)</td></tr>
-            <tr><td>Page 05</td><td>Visual Charts: Dashamsha (D10), Saptamsha (D7)</td></tr>
-            <tr><td>Page 06</td><td>Planetary Positions Table & Sarvashtakavarga Matrix</td></tr>
-            <tr><td>Page 07</td><td>Personal Planetary Profile: Sun, Moon, Mars, Merc, Jup</td></tr>
-            <tr><td>Page 08</td><td>Personal Planetary Profile: Venus, Sat, Rahu, Ketu</td></tr>
-            <tr><td>Page 09</td><td>Bhavphal (Houses 1 to 6): Placements & Lordships</td></tr>
-            <tr><td>Page 10</td><td>Bhavphal (Houses 7 to 12): Placements & Lordships</td></tr>
-            <tr><td>Page 11</td><td>Multi-System Synthesis: Unified Verdict vs. Conflicts</td></tr>
-            <tr><td>Page 12</td><td>Jaimini Chara Karakas: The 7 Soul Indicators</td></tr>
-            <tr><td>Page 13</td><td>Love, Marriage, Darakaraka & Mangalik Evaluation</td></tr>
-            <tr><td>Page 14</td><td>Career Calling, Wealth Architecture & Raj Yogas</td></tr>
-            <tr><td>Page 15</td><td>Karmic Axis (Rahu-Ketu) & Sade Sati Phases</td></tr>
-            <tr><td>Page 16</td><td>Vimshottari Dasha Timeline (Birth to 2048)</td></tr>
-            <tr><td>Page 17</td><td>Vimshottari Dasha Deep-Dive (2048 to 2092)</td></tr>
-            <tr><td>Page 18</td><td>Chronological Life Event Timeline (Specific Ages)</td></tr>
-            <tr><td>Page 19</td><td>KP Cuspal Sub-Lord Interlinks & Significators</td></tr>
-            <tr><td>Page 20</td><td>Shadbala, Bhava Bala & Planetary Avasthas</td></tr>
-            <tr><td>Page 21</td><td>5-Year Varshphal & Transit Forecast (2026-2031)</td></tr>
-            <tr><td>Page 22</td><td>Vedic Numerology & Complete Do's and Don'ts</td></tr>
-            <tr><td>Page 23</td><td>Vedic Remedies Help Book & Legal Disclaimer</td></tr>
-        </table>
-        <p class="block-head">Why Multi-System Cross-Validation Matters</p>
-        <p class="block-body">This Help Book cross-examines BPHS, KP, Jaimini Sutras, Phaladeepika, Brihat Jataka, and Laghu Parashari. Predictions confirmed by all systems are marked as UNIFIED VERDICTS, while technical divergences are transparently explained.</p>
-
-        <div class="chapter-header">
-            <p class="chapter-title">CHAPTER 02: AVAKAHADA CHAKRA & PANCHANG</p>
-            <p class="chapter-subtitle">Foundational Astronomical & Natal Alignment</p>
-        </div>
-        <table>
-            <tr><th>Parameter</th><th>Natal Value</th><th>Parameter</th><th>Natal Value</th></tr>
-            <tr><td>Lagna (Ascendant)</td><td>Taurus 14° 52'</td><td>Lagna Lord</td><td>Venus (Shukra)</td></tr>
-            <tr><td>Moon Sign (Rashi)</td><td>Taurus 06° 18'</td><td>Rashi Lord</td><td>Venus (Shukra)</td></tr>
-            <tr><td>Nakshatra & Pada</td><td>Krittika - Pada 3</td><td>Nakshatra Lord</td><td>Sun (Surya)</td></tr>
-            <tr><td>Tithi at Birth</td><td>Krishna Saptami</td><td>Vaar (Day)</td><td>Wednesday / Venusian</td></tr>
-            <tr><td>Yoga & Karana</td><td>Variyan / Balava</td><td>Gana & Yoni</td><td>Rakshasa / Mesh</td></tr>
-            <tr><td>Nadi & Varna</td><td>Antya / Vaishya</td><td>Paya (Footing)</td><td>Swarna (Gold)</td></tr>
-            <tr><td>Sun Sign (Vedic)</td><td>Virgo (Kanya)</td><td>Active Dasha</td><td>Saturn / Mercury</td></tr>
-        </table>
-        <p class="block-head">1. Vaar & Tithi Impact</p>
-        <p class="block-body">Born with strong Venusian and Mercurial currents, the native possesses sharp analytical intellect paired with refined aesthetic sensibilities. Krishna Paksha birth grants natural resilience, turning early obstacles into stepping stones.</p>
-        <p class="block-head">2. Lagna & Rashi Pillar (Vrishabha / Taurus)</p>
-        <p class="block-body">With Taurus rising and housing the exalted Moon, you build life brick by brick. You project calm reliability, determination, and a taste for quality.</p>
-
-        <div class="chapter-header">
-            <p class="chapter-title">CHAPTER 03: VISUAL CHARTS: LAGNA (D1) & NAVAMSHA (D9)</p>
-            <p class="chapter-subtitle">North Indian Style Natal & Divisional Blueprints</p>
-        </div>
-        <div class="chart-container">
-            <div class="chart-box">
-                <h4 style="color:#781e14; margin-bottom:5px;">LAGNA CHART (D1 - RASHI)</h4>
-                <svg viewBox="0 0 100 100" width="200" height="200">
-                    <rect x="0" y="0" width="100" height="100" fill="none" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="0" y1="0" x2="100" y2="100" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="100" y1="0" x2="0" y2="100" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="50" y1="0" x2="100" y2="50" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="100" y1="50" x2="50" y2="100" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="50" y1="100" x2="0" y2="50" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="0" y1="50" x2="50" y2="0" stroke="#8c2814" stroke-width="1"/>
-                    <text x="50" y="25" font-size="6" text-anchor="middle">As 14° Mo 6°</text>
-                    <text x="25" y="10" font-size="6" text-anchor="middle">Ke 9°</text>
-                    <text x="10" y="75" font-size="6" text-anchor="middle">Su12° Sa14°</text>
-                    <text x="25" y="88" font-size="6" text-anchor="middle">Me 2° Ve14°</text>
-                    <text x="50" y="75" font-size="6" text-anchor="middle">Ma 29°</text>
-                    <text x="75" y="88" font-size="6" text-anchor="middle">Ra 9°</text>
-                    <text x="88" y="25" font-size="6" text-anchor="middle">Ju(R) 1°</text>
-                </svg>
-            </div>
-            <div class="chart-box">
-                <h4 style="color:#781e14; margin-bottom:5px;">NAVAMSHA CHART (D9)</h4>
-                <svg viewBox="0 0 100 100" width="200" height="200">
-                    <rect x="0" y="0" width="100" height="100" fill="none" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="0" y1="0" x2="100" y2="100" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="100" y1="0" x2="0" y2="100" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="50" y1="0" x2="100" y2="50" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="100" y1="50" x2="50" y2="100" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="50" y1="100" x2="0" y2="50" stroke="#8c2814" stroke-width="1"/>
-                    <line x1="0" y1="50" x2="50" y2="0" stroke="#8c2814" stroke-width="1"/>
-                    <text x="50" y="25" font-size="6" text-anchor="middle">As(Tau)</text>
-                    <text x="25" y="10" font-size="6" text-anchor="middle">Su</text>
-                    <text x="10" y="25" font-size="6" text-anchor="middle">Ra</text>
-                    <text x="50" y="75" font-size="6" text-anchor="middle">Me</text>
-                    <text x="88" y="75" font-size="6" text-anchor="middle">Ke</text>
-                    <text x="75" y="50" font-size="6" text-anchor="middle">Mo Sa</text>
-                    <text x="88" y="25" font-size="6" text-anchor="middle">Ve</text>
-                    <text x="75" y="10" font-size="6" text-anchor="middle">Ma Ju</text>
-                </svg>
-            </div>
-        </div>
-        <p class="block-head">Technical Chart Synthesis (Why Events Happen)</p>
-        <p class="block-body">1. Vargottama Ascendant (Taurus Rising in D1 & D9): BPHS and Phaladeepika declare the native internally and externally unshakable. Health and status are doubly fortified. 2. 5th House Surya-Shani-Budha Cluster (Virgo): 4th Lord (Sun), Exalted 2nd/5th Lord (Mercury), and Yogakaraka 9th/10th Lord (Saturn) conjoin in the 5th trine, forming a premier Raja Yoga for technical and financial mastery.</p>
-
-        <div class="chapter-header">
-            <p class="chapter-title">CHAPTER 05: PLANETARY POSITIONS & ASHTAKAVARGA</p>
-            <p class="chapter-subtitle">Exact Sidereal Longitudes, Nakshatra Lords, Sub-Lords & Bindus</p>
-        </div>
-        <table>
-            <tr><th>Planet</th><th>Sign</th><th>Degree</th><th>Nakshatra</th><th>Sign L.</th><th>Star L.</th><th>Sub L.</th><th>Dignity</th></tr>
-            <tr><td>Ascendant</td><td>Taurus</td><td>14° 52'</td><td>Rohini-2</td><td>Venus</td><td>Moon</td><td>Jupiter</td><td>Vargottama</td></tr>
-            <tr><td>Sun</td><td>Virgo</td><td>12° 06'</td><td>Hasta-1</td><td>Mercury</td><td>Moon</td><td>Moon</td><td>Friendly</td></tr>
-            <tr><td>Moon</td><td>Taurus</td><td>06° 18'</td><td>Krittika-3</td><td>Venus</td><td>Sun</td><td>Venus</td><td>Exalted</td></tr>
-            <tr><td>Mars</td><td>Libra</td><td>29° 18'</td><td>Vishakha-3</td><td>Venus</td><td>Jupiter</td><td>Mars</td><td>Atmakaraka</td></tr>
-            <tr><td>Mercury</td><td>Virgo</td><td>02° 14'</td><td>U.Phalguni</td><td>Mercury</td><td>Sun</td><td>Saturn</td><td>Exalted</td></tr>
-            <tr><td>Jupiter(R)</td><td>Pisces</td><td>01° 52'</td><td>P.Bhadra-4</td><td>Jupiter</td><td>Jupiter</td><td>Venus</td><td>Own Sign</td></tr>
-            <tr><td>Venus</td><td>Libra</td><td>14° 10'</td><td>Swati-3</td><td>Venus</td><td>Rahu</td><td>Mercury</td><td>Moolatrikona</td></tr>
-            <tr><td>Saturn</td><td>Virgo</td><td>14° 02'</td><td>Hasta-2</td><td>Mercury</td><td>Moon</td><td>Rahu</td><td>Yogakaraka</td></tr>
-            <tr><td>Rahu</td><td>Sagittar.</td><td>09° 11'</td><td>Mula-3</td><td>Jupiter</td><td>Ketu</td><td>Venus</td><td>8H Research</td></tr>
-            <tr><td>Ketu</td><td>Gemini</td><td>09° 11'</td><td>Ardra-1</td><td>Mercury</td><td>Rahu</td><td>Rahu</td><td>2H Detached</td></tr>
-        </table>
-
-        <div class="chapter-header">
-            <p class="chapter-title">CHAPTER 10: MULTI-SYSTEM PEER REVIEW & UNIFIED VERDICT</p>
-            <p class="chapter-subtitle">Cross-Examining KP, BPHS, Jaimini, Phaladeepika & Laghu Parashari</p>
-        </div>
-        <table>
-            <tr><th>Life Domain</th><th>BPHS / Parashari</th><th>KP System</th><th>Jaimini Sutras</th><th>Final Verdict</th></tr>
-            <tr><td>Wealth & Status</td><td>Exalted 2L/5L + 11L in 11H</td><td>11th Sub-Lord Jup/Ven</td><td>AK/AmK linked to 11H</td><td>UNIFIED: High Wealth</td></tr>
-            <tr><td>Career Domain</td><td>Yogakaraka Saturn in 5H</td><td>10th Sub-Lord 5-6-10-11</td><td>Karakamsha in 10H</td><td>UNIFIED: Executive</td></tr>
-            <tr><td>Marriage Timing</td><td>Saturn 3rd aspect delays</td><td>7th Sub-Lord 2-7-11</td><td>DK Jupiter in Own Sign</td><td>CONFLICT: Age 25 vs 28</td></tr>
-            <tr><td>Mangalik Impact</td><td>Mars influences 7H</td><td>Jupiter 9th aspect saves</td><td>Strong DK protects</td><td>UNIFIED: Cancelled</td></tr>
-        </table>
-        <p class="block-head">1. Where All 6 Systems Agree (100% Unified Verdicts)</p>
-        <p class="block-body">INTELLECTUAL & FINANCIAL MASTERY: BPHS, KP, Phaladeepika, and Jaimini unanimously confirm high financial independence and executive authority. Vargottama Lagna and Exalted Moon confirm lifelong resilience.</p>
-        
-        <div class="chapter-header">
-            <p class="chapter-title">CHAPTER 22: VEDIC REMEDIES & LEGAL DECLARATION</p>
-            <p class="chapter-subtitle">Practical Planetary Alignment & Mandatory Disclaimer</p>
-        </div>
-        <table>
-            <tr><th>Category</th><th>Recommendation</th><th>Astrological Purpose</th></tr>
-            <tr><td>Gemstone</td><td>Diamond / White Zircon or Emerald</td><td>Strengthens Lagna Lord Venus & Exalted Mercury</td></tr>
-            <tr><td>Rudraksha</td><td>6 Mukhi + 4 Mukhi Rudraksha</td><td>Balances Venusian grace and Mercurial intellect</td></tr>
-            <tr><td>Daily Mantra</td><td>Om Shukraya Namaha / Om Budhaya Namaha</td><td>Chant 27 or 108 times on Fridays & Wednesdays</td></tr>
-            <tr><td>Sade Sati Shield</td><td>Hanuman Chalisa & Shani Gayatri</td><td>Recite on Saturdays to keep Sade Sati smooth</td></tr>
-            <tr><td>Charitable Act</td><td>Donate green moong dal or books</td><td>Perform on Wednesdays to unlock Dhana Yogas</td></tr>
-        </table>
-        <div style="background-color: #f5f0eb; border: 1px solid #8c1e14; padding: 15px; margin-top: 30px;">
-            <h4 style="text-align: center; color: #8c1414; margin-top: 0;">MANDATORY DECLARATION & LEGAL DISCLAIMER</h4>
-            <p style="font-size: 8pt; color: #282828; text-align: justify; margin: 0;">This Advanced Kundali Help Book has been compiled and created by Rajiv Kumar (Contact: 9914465143). It is hereby explicitly declared that the creator of this report is NOT a professional or certified commercial astrologer. This report is generated solely for educational, spiritual, and self-reflective guidance with the help of classical astrological books, publicly available resources on the internet, mathematical algorithms, and generative AI. Astrological interpretations across BPHS, KP, Jaimini, and Phaladeepika are indicative tendencies rather than guaranteed fixed outcomes. Nothing in this document constitutes medical, legal, or licensed financial advice. The creator and editor of this report (Rajiv Kumar) assumes zero liability and is not responsible for any decisions or consequences arising from data or information in this report.</p>
-        </div>
-        """
-
-    html += "</body></html>"
-    return html
-
-st.set_page_config(page_title="KP & Bhava Jyotish - Rajiv Kumar", layout="centered")
-st.markdown("<div style='text-align:center;padding:15px;background:#fdf5e6;border:2px solid #8b2500;border-radius:10px;'><h2 style='color:#8b2500;margin:0;'>|| Shri Ganeshaya Namah ||</h2><h1 style='color:#5c1800;margin:5px 0;'>KP & Bhava Jyotish AI</h1><p style='color:#333;font-weight:bold;margin:0;'>23-Page Multi-System Advanced Kundali Help Book</p><p style='color:#8b2500;margin:5px 0 0 0;'>Created by: <b>Rajiv Kumar</b> | Contact: <b>9914465143</b></p></div><br>", unsafe_allow_html=True)
-
-with st.form("k_form"):
-    st.subheader("Enter Birth Particulars")
-    
-    language_choice = st.radio("Select Report Language", ["English", "Hindi"], horizontal=True)
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        c_name = st.text_input("Full Name of Jataka", "")
-        c_dob = st.text_input("Date of Birth (DD/MM/YYYY)", "")
-    with c2:
-        c_time = st.time_input("Time of Birth", value=None)
-        c_pob = st.text_input("Place of Birth (City, State)", "")
-        
-    c_phone = st.text_input("Client WhatsApp / Contact Number", "")
-    sub = st.form_submit_button("Generate 23-Page Master Kundali PDF")
-
-if sub:
-    if not c_name or not c_dob or c_time is None or not c_pob:
-        st.error("⚠️ Please fill in all the birth particulars (Name, Date, Time, and Place) before generating the report.")
-    else:
-        with st.spinner(f"Generating 23-Page Master PDF in {language_choice}..."):
-            c_tob_str = c_time.strftime("%I:%M %p")
-            try:
-                requests.post(WEBAPP_URL, json={"name":c_name, "dob":c_dob, "tob":c_tob_str, "pob":c_pob, "phone":c_phone, "language":language_choice, "timestamp":datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}, timeout=3)
-            except Exception:
-                pass
+        for hs in range(1, 13):
+            # Calculate correct Rashi number for the house
+            rashi = ((asc_rashi + hs - 2) % 12) + 1
+            rx, ry, px, py = positions[hs]
+            
+            # Print Rashi Number in corner
+            self.use_font("B", 7)
+            self.set_text_color(160, 90, 40)
+            self.set_xy(x + (rx * scale) - 5, y + (ry * scale) - 3)
+            self.cell(10, 6, str(rashi), 0, 0, "C")
+            
+            # Print Planets (Stacked to prevent overlap)
+            if hs in data and data[hs]:
+                self.use_font("", 7)
+                self.set_text_color(40, 40, 40)
+                lines = data[hs].split("\n")
                 
-            # Generate the HTML structure first
-            raw_html = get_html_content(c_name, c_dob, c_tob_str, c_pob, language_choice)
-            
-            # Use WeasyPrint to render the HTML into a perfect PDF
-            pdf_bytes = HTML(string=raw_html).write_pdf()
-            
-            st.success(f"23-Page Master Kundali Help Book for {c_name} is ready!")
-            st.download_button("Download 23-Page Master Kundali PDF", data=pdf_bytes, file_name=f"Advanced_Kundali_{c_name.replace(' ', '_')}.pdf", mime="application/pdf")
+                lh = 3.5  # Line height
+                start_y = y + (py * scale) - ((len(lines) * lh) / 2.0)
+                
+                for i, line in enumerate(lines):
+                    self.set_xy(x + (px * scale) - 15, start_y + (i * lh))
+                    self.cell(30, lh, cln(line), 0, 0, "C")
+
+    def header(self):
+        self.set_draw_color(180, 130, 70)
+        self.set_line_width(0.5)
+        self.rect(8, 8, 194, 281)
+        self.set_line_width(0.2)
+        self.rect(10, 10, 190, 277)
+        self.swastik(105, 148.5, 105, (246, 236, 222), 5.0)
+        self.swastik(20, 20, 10, (180, 45, 25), 0.9)
+        self.swastik(190, 20, 10, (180, 45, 25), 0.9)
+        if self.page_no() > 1:
+            self.set_xy(30, 14)
+            self.use_font("B", 8.5)
+            self.set_text_color(130, 50, 30)
+            lang_label = "(HINDI)" if self.language == "Hindi" else "(ENGLISH)"
+            t = f"KP BHAVA JYOTISH | ADVANCED KUNDALI HELP BOOK {lang_label} | {self.c_name.upper()}"
+            self.cell(150, 5, cln(t), 0, 0, "C")
+            self.set_draw_color(180, 130, 70)
+            self.set_line_width(0.3)
+            self.line(30, 21, 180, 21)
+            self.set_y(28)
+
+    def footer(self):
+        self.set_y(-18)
+        self.set_draw_color(180, 130, 70)
+        self.set_line_width(0.3)
+        self.line(15, 278, 195, 278)
+        self.use_font("B", 8)
+        self.set_text_color(110, 40, 20)
+        self.cell(90, 8, "Created by Rajiv Kumar | Contact: 9914465143", 0, 0, "L")
+        self.cell(90, 8, f"Page {self.page_no()} of 23", 0, 0, "R")
+
+    def ch_title(self, num, title, sub=""):
+        self.set_xy(15, 28)
+        self.set_fill_color(248, 238, 225)
+        self.set_draw_color(160, 60, 30)
+        self.set_line_width(0.4)
+        self.rect(15, 28, 180, 15, "DF")
+        self.set_xy(18, 29.5)
+        self.use_font("B", 11.5)
+        self.set_text_color(140, 30, 20)
+        self.cell(174, 6, cln(f"CHAPTER {num}: {title}" if self.language == "English" else f"अध्याय {num}: {title}"), 0, 0, "L")
+        if sub:
+            self.set_xy(18, 36)
+            self.use_font("", 8.5)
+            self.set_text_color(90, 60, 40)
+            self.cell(174, 5, cln(sub), 0, 0, "L")
+        self.set_y(47)
+
+    def blk(self, head, body):
+        self.set_x(15)
+        self.use_font("B", 9.5)
+        self.set_text_color(140, 40, 20)
+        self.cell(180, 6, cln(head), 0, 1, "L")
+        self.set_x(15)
+        self.use_font("", 9)
+        self.set_text_color(35, 35, 35)
+        self.multi_cell(180, 5.0, cln(body))
+        self.ln(2.5)
+
+    def tbl(self, hdrs, rows, widths):
+        self.set_x(15)
+        self.set_fill_color(150, 50, 30)
+        self.set_text_color(255, 255, 255)
+        self.use_font("B", 8)
+        for i, h in enumerate(hdrs):
+            self.cell(widths[i], 6.5, cln(h), 1, 0, "C", True)
+        self.ln()
+        self.use_font("", 7.5)
+        self.set_text_color(30, 30, 30)
+        fill = False
+        for r in rows:
+            self.set_x(15)
+            self.set_fill_color(*(252, 246, 238) if fill else (255, 255, 255))
+            for i, val in enumerate(r):
+                self.cell(widths[i], 6.0, cln(val), 1, 0, "C", True)
+            self.ln()
+            fill = not fill
+        self.ln(3)
+
+# ================= DATA DICTIONARIES =================
+EN_PAGES = [
+    ("02", "AVAKAHADA CHAKRA & PANCHANG", "Foundational Astronomical & Natal Alignment",
+     (["Parameter", "Natal Value", "Parameter", "Natal Value"], [
+         ["Lagna (Ascendant)", "Taurus 14° 52'", "Lagna Lord", "Venus (Shukra)"],
+         ["Moon Sign (Rashi)", "Taurus 06° 18'", "Rashi Lord", "Venus (Shukra)"],
+         ["Nakshatra & Pada", "Krittika - Pada 3", "Nakshatra Lord", "Sun (Surya)"],
+         ["Tithi at Birth", "Krishna Saptami", "Vaar (Day)", "Wednesday / Venusian"],
+         ["Yoga & Karana", "Variyan / Balava", "Gana & Yoni", "Rakshasa / Mesh"],
+         ["Nadi & Varna", "Antya / Vaishya", "Paya (Footing)", "Swarna (Gold)"],
+         ["Sun Sign (Vedic)", "Virgo (Kanya)", "Active Dasha", "Saturn / Mercury"]
+     ], [45, 45, 45, 45]), [
+        ("1. Vaar & Tithi Impact", "Born with strong Venusian and Mercurial currents, the native possesses sharp analytical intellect paired with refined aesthetic sensibilities. Krishna Paksha birth grants natural resilience, turning early obstacles into stepping stones."),
+        ("2. Lagna & Rashi Pillar (Vrishabha / Taurus)", "With Taurus rising and housing the exalted Moon, you build life brick by brick. You project calm reliability, determination, and a taste for quality."),
+        ("3. Nakshatra Pillar (Krittika / Rohini Axis)", "This stellar signature bestows the Razor of Truth alongside creative fertility. You cut through false pretenses directly and protect your family fiercely.")
+    ]),
+    ("05", "PLANETARY POSITIONS & ASHTAKAVARGA", "Exact Sidereal Longitudes, Nakshatra Lords, Sub-Lords & Bindus",
+     (["Planet", "Sign", "Degree", "Nakshatra", "Sign L.", "Star L.", "Sub L.", "Dignity"], [
+         ["Ascendant", "Taurus", "14° 52'", "Rohini-2", "Venus", "Moon", "Jupiter", "Vargottama"],
+         ["Sun", "Virgo", "12° 06'", "Hasta-1", "Mercury", "Moon", "Moon", "Friendly"],
+         ["Moon", "Taurus", "06° 18'", "Krittika-3", "Venus", "Sun", "Venus", "Exalted"],
+         ["Mars", "Libra", "29° 18'", "Vishakha-3", "Venus", "Jupiter", "Mars", "Atmakaraka"],
+         ["Mercury", "Virgo", "02° 14'", "U.Phalguni", "Mercury", "Sun", "Saturn", "Exalted"],
+         ["Jupiter(R)", "Pisces", "01° 52'", "P.Bhadra-4", "Jupiter", "Jupiter", "Venus", "Own Sign"],
+         ["Venus", "Libra", "14° 10'", "Swati-3", "Venus", "Rahu", "Mercury", "Moolatrikona"],
+         ["Saturn", "Virgo", "14° 02'", "Hasta-2", "Mercury", "Moon", "Rahu", "Yogakaraka"],
+         ["Rahu", "Sagittar.", "09° 11'", "Mula-3", "Jupiter", "Ketu", "Venus", "8H Research"],
+         ["Ketu", "Gemini", "09° 11'", "Ardra-1", "Mercury", "Rahu", "Rahu", "2H Detached"]
+     ], [22, 20, 18, 24, 20, 20, 20, 36]), [
+        ("Sarvashtakavarga Summary (Bindu Strength per House)", "H1: 31 | H2: 27 | H3: 30 | H4: 29 | H5: 26 | H6: 32 | H7: 25 | H8: 22 | H9: 29 | H10: 33 | H11: 35 | H12: 20. REASONING: 33 Bindus in H10 and 35 Bindus in H11 guarantee that career efforts yield high financial gains.")
+    ]),
+    ("06", "PERSONAL PLANETARY PROFILE (SUN TO JUPITER)", "How Each Planet Operates by Placement, Lordship & Aspect", None, [
+        ("1. SUN (4th Lord in 5th House - Virgo)", "Sun rules your 4th house of home and sits in the 5th house. Your emotional security is tied to intellectual achievement. Sun's 7th aspect on the 11th house links real estate and education to high financial gains."),
+        ("2. MOON (3rd Lord Exalted in Lagna - Taurus)", "Moon is exalted in Taurus in the 1st house. Grants extraordinary emotional magnetism, memory retention, and intuition. Moon's 7th aspect on the 7th house brings a devoted life partner."),
+        ("3. MARS (7th & 12th Lord in 6th/7th Cusp)", "Mars governs partnerships (7th) and distant lands (12th). You bring fierce loyalty and protective fire to relationships. You do not tolerate mediocrity or dishonesty in business or marriage."),
+        ("4. MERCURY (2nd & 5th Lord Exalted in 5th House - Virgo)", "Mercury rules wealth (2nd) and intellect (5th) in exaltation. Forms a top-tier Dhana-cum-Budhaditya Yoga. Your mathematical, commercial, and analytical skills convert directly into tangible wealth."),
+        ("5. JUPITER (8th & 11th Lord in 11th House - Pisces)", "Jupiter occupies its own sign Pisces in the 11th house. Jupiter's 5th aspect blesses communication (3H); its 7th aspect protects education/children (5H); its 9th aspect shields marriage (7H).")
+    ]),
+    ("07", "PERSONAL PLANETARY PROFILE (VENUS TO KETU)", "Outer Planets, Shadow Nodes & Major Conjunctions", None, [
+        ("6. VENUS (Lagna & 6th Lord in Own Sign Libra)", "Ascendant Lord Venus sits in its Moolatrikona sign Libra. You conquer rivals through diplomacy, charm, and competence. Excels in law, medicine, finance, design, and management."),
+        ("7. SATURN (Yogakaraka 9th & 10th Lord in 5th House)", "For Taurus Lagna, Saturn rules fortune (9H) and career (10H). Gives deep concentration and mastery over complex systems. Saturn's 3rd aspect on 7H delays marriage slightly for maturity; its 7th aspect on 11H ensures steady wealth; its 10th aspect on 2H enforces financial discipline."),
+        ("8. RAHU IN 8TH HOUSE (Sagittarius) & KETU IN 2ND HOUSE (Gemini)", "The nodal axis cuts across the 2nd/8th financial axis. Rahu in 8H gives uncanny research intuition and sudden windfalls. Ketu in 2H makes speech blunt; practice family diplomacy and automated savings."),
+        ("9. MAJOR CONJUNCTION: SUN + SATURN + MERCURY IN VIRGO", "When the 2nd/5th Lord (Mercury), 4th Lord (Sun), and 9th/10th Lord (Saturn) combine in Virgo, the native possesses an Executive Analyst mind capable of building structured, long-lasting institutional empires.")
+    ]),
+    ("08", "BHAVPHAL: LIFE THROUGH HOUSES 1 TO 6", "Significators, House Lord Placements & Practical Manifestations", None, [
+        ("1st House (Tanu Bhava - Taurus): Vitality & Selfhood", "Ruled by Venus, occupied by Exalted Moon. You have a magnetic, grounded persona, strong constitution, and high public relatability."),
+        ("2nd House (Dhana Bhava - Gemini): Wealth, Speech & Family", "Ruled by Exalted Mercury, occupied by Ketu, aspected by Saturn. Financial accumulation accelerates after age 26. Keep speech warm during family talks."),
+        ("3rd House (Sahaj Bhava - Cancer): Courage & Communication", "Ruled by Exalted Moon, blessed by Jupiter's 5th aspect. Your communication carries wisdom and authority. Digital media and writing bring recognition."),
+        ("4th House (Sukha Bhava - Leo): Mother, Home & Vehicles", "Ruled by Sun (in 5H). Domestic environment is dignified and education-focused. You will acquire luxury vehicles and prime real estate through self-earned wealth."),
+        ("5th House (Putra/Vidya Bhava - Virgo): Intellect & Romance", "Occupied by Exalted Mercury, Sun, and Yogakaraka Saturn, aspected by Jupiter. This is the powerhouse house of your chart, guaranteeing academic distinction."),
+        ("6th House (Ripu/Roga Bhava - Libra): Work, Rivals & Health", "Occupied by own-sign Venus. You thrive in competitive exams and structured corporate environments. Maintain kidney hydration and lower-back posture.")
+    ]),
+    ("09", "BHAVPHAL: LIFE THROUGH HOUSES 7 TO 12", "Partnerships, Longevity, Fortune, Career, Gains & Liberation", None, [
+        ("7th House (Jaya Bhava - Scorpio): Marriage & Contracts", "Ruled by Mars, receiving Jupiter's 9th aspect and Moon's 7th aspect. You seek deep, all-or-nothing loyalty. Jupiter ensures a wise, devoted life partner."),
+        ("8th House (Randhra Bhava - Sagittarius): Longevity & Research", "Ruled by Jupiter (in 11H), occupied by Rahu. Strong longevity and breakthroughs in audit, taxation, research, or occult sciences. Avoid speculative gambling."),
+        ("9th House (Dharma Bhava - Capricorn): Fortune & Mentors", "Ruled by Yogakaraka Saturn. Your luck activates through discipline, ethics, and long-term perseverance. Strong karmic bond with father and mentors."),
+        ("10th House (Karma Bhava - Aquarius): Career & Fame", "Ruled by Saturn (placed in 5H). Career involves large organizations, finance, technology, law, or institutional governance. Unshakeable professional rise."),
+        ("11th House (Labha Bhava - Pisces): Gains & Networks", "Occupied by own-sign Jupiter (R) and aspected by Sun, Mercury, and Saturn. Creates a massive Dhana-Labha Yoga. Multiple income streams fulfill desires."),
+        ("12th House (Vyaya Bhava - Aries): Foreign Lands & Liberation", "Ruled by Mars. Expenditure is directed toward self-development and assets. Favorable for international collaborations and multinational career roles.")
+    ]),
+    ("10", "MULTI-SYSTEM PEER REVIEW & UNIFIED VERDICT", "Cross-Examining KP, BPHS, Jaimini, Phaladeepika & Laghu Parashari",
+     (["Life Domain", "BPHS / Parashari", "KP System", "Jaimini Sutras", "Final Verdict"], [
+         ["Wealth & Status", "Exalted 2L/5L + 11L in 11H", "11th Sub-Lord Jup/Ven", "AK/AmK linked to 11H", "UNIFIED: High Wealth"],
+         ["Career Domain", "Yogakaraka Saturn in 5H", "10th Sub-Lord 5-6-10-11", "Karakamsha in 10H", "UNIFIED: Executive"],
+         ["Marriage Timing", "Saturn 3rd aspect delays", "7th Sub-Lord 2-7-11", "DK Jupiter in Own Sign", "CONFLICT: Age 25 vs 28"],
+         ["Mangalik Impact", "Mars influences 7H", "Jupiter 9th aspect saves", "Strong DK protects", "UNIFIED: Cancelled"]
+     ], [30, 42, 38, 38, 32]), [
+        ("1. Where All 6 Systems Agree (100% Unified Verdicts)", "INTELLECTUAL & FINANCIAL MASTERY: BPHS, KP, Phaladeepika, and Jaimini unanimously confirm high financial independence and executive authority. Vargottama Lagna and Exalted Moon confirm lifelong resilience."),
+        ("2. Where Systems Diverge & Technical Reasoning", "MARRIAGE TIMING: BPHS flags Saturn's 3rd aspect on the 7th house as a cause for delay. However, KP and Phaladeepika override this fear because Jupiter in Pisces casts an exact 9th trinal aspect on the 7th house, acting as a divine shield. Verdict: Marriage around age 26-28 will be stable and prosperous.")
+    ]),
+    ("11", "JAIMINI CHARA KARAKAS: 7 SOUL INDICATORS", "Decoding Soul Purpose Through Planetary Degrees (Jaimini Sutras)",
+     (["Chara Karaka", "Planet & Degree", "Jaimini Role", "Life Manifestation"], [
+         ["Atmakaraka (AK)", "Mars (29° 18')", "Soul King & Primary Lesson", "Courage, mastering patience"],
+         ["Amatyakaraka (AmK)", "Venus (14° 10')", "Career & Professional Rise", "Diplomatic leadership, luxury"],
+         ["Bhratrukaraka (BK)", "Saturn (14° 02')", "Siblings, Mentors & Execution", "Structured perseverance"],
+         ["Matrukaraka (MK)", "Sun (12° 06')", "Mother, Sanctuary & Property", "Dignified domestic values"],
+         ["Putrakaraka (PK)", "Moon (06° 18')", "Creativity & Future Progeny", "Empathetic mentorship"],
+         ["Gnatikaraka (GK)", "Mercury (02° 14')", "Competition & Problem-Solving", "Defeating rivals via logic"],
+         ["Darakaraka (DK)", "Jupiter (01° 52')", "Spouse & Partner Nature", "Wise, ethical, protective spouse"]
+     ], [36, 32, 52, 60]), [
+        ("Atmakaraka (Mars) + Amatyakaraka (Venus) Synthesis", "With Mars as Atmakaraka, your soul is here to develop fearless initiative while mastering inner patience. Because Venus acts as Amatyakaraka in its own sign, your career blends warrior-like drive (Mars) with diplomatic grace (Venus)."),
+        ("Darakaraka (Jupiter in Pisces) - The Soulmate Blueprint", "In Jaimini Astrology, the planet with the lowest degree represents your spouse. Jupiter in its own sign in the 11th house indicates a partner who is noble, financially accomplished, and acts as your greatest friend.")
+    ]),
+    ("12", "LOVE, MARRIAGE & MANGALIK EVALUATION", "5th House Romance, 7th House Commitment & Marriage Windows",
+     (["Phase", "Projected Timeline", "Operating Dasha", "Astrological Rating"], [
+         ["Window 1", "Late 2035 - Mid 2036 (Age 25-26)", "Saturn MD - Venus AD", "Good (Early Proposal)"],
+         ["Window 2", "Early 2037 - Late 2038 (Age 27-28)", "Saturn MD - Sun/Moon AD", "Excellent (Peak Harmony)"],
+         ["Window 3", "Mid 2039 - Late 2040 (Age 29-30)", "Saturn MD - Mars/Rahu AD", "Strong (Post-Career Union)"]
+     ], [25, 55, 50, 50]), [
+        ("5th House & 7th House Relationship Dynamics", "With Virgo in the 5th house and Scorpio in the 7th house, you do not take love lightly. Casual relationships do not interest you. You test a partner's intellect and integrity before opening your heart."),
+        ("Complete Mangalik Dosha Technical Audit", "Mars rules the 7th and 12th houses, creating a mild Mangalik signature. Under Phaladeepika and BPHS rules, Jupiter's direct 9th aspect from its own sign Pisces onto the 7th house completely neutralizes malefic Martian heat. Marrying after age 26 ensures emotional maturity.")
+    ]),
+    ("13", "CAREER CALLING, WEALTH & RAJ YOGAS", "10th House Command, Dhana Yogas & Ideal Professional Arenas", None, [
+        ("Top Raj Yogas & Dhana Yogas Present in Chart", "1. DHARMA-KARMA ADHIPATI YOGA: Unstoppable rise to senior management or independent authority. 2. EXALTED BUDHADITYA & DHANA YOGA: Connects intelligence directly to wealth creation. 3. LABHA BRIHASPATI YOGA: Guarantees lifelong financial liquidity. 4. VIPAREETA RAJ YOGA PATTERN: Victory over rivals."),
+        ("Ideal Career & Business Fields", "Primary Streams: Corporate Finance, Chartered Accountancy, Investment Banking, FinTech, Data Science, or Actuarial Analytics. Secondary Streams: Law, Civil/Administrative Services, Corporate Governance, Medicine/Biotech, or Luxury Brand Management. Structured corporate role (Ages 22-30) followed by consultancy/enterprise (Age 31+).")
+    ]),
+    ("14", "RAHU-KETU AXIS & SADE SATI JOURNEY", "Shadow Planet Lessons & Saturn's 7.5-Year Transformation Cycles",
+     (["Cycle", "Phase & Sign", "Timeline", "Core Impact & Strategy"], [
+         ["Cycle 1", "Rising Phase (Aries)", "Mid 2027 - Mid 2029", "12th from Moon: Academic focus & sleep discipline"],
+         ["Cycle 1", "Peak Phase (Taurus)", "Mid 2029 - Mid 2032", "Over Natal Moon: Higher education rigor & maturity"],
+         ["Cycle 1", "Setting Phase (Gemini)", "Mid 2032 - Mid 2034", "2nd from Moon: First major job & income stability"],
+         ["Cycle 2", "Full 7.5-Year Cycle", "2056 - 2064", "Peak executive consolidation and legacy building"]
+     ], [25, 45, 40, 70]), [
+        ("Rahu in 8th House (Sagittarius) & Ketu in 2nd House (Gemini)", "Rahu draws you toward deep research, audit, psychology, and hidden financial mechanisms. Ketu in the 2nd house detaches you from superficial small talk; practice warm communication and automate investments into long-term assets."),
+        ("Why Vaanya's Sade Sati is Constructive (2027-2034)", "Because Saturn is the Yogakaraka planet for Taurus Ascendant and Moon is exalted in Taurus, Sade Sati acts as a strict academic and professional boot camp during college and early career years, forging extraordinary discipline.")
+    ]),
+    ("15", "VIMSHOTTARI DASHA TIMELINE (2010 - 2048)", "Planetary Period Timelines & Micro-Period Predictions",
+     (["Dasha Period", "Years", "Age", "Key Life Events & Astrological Reasoning"], [
+         ["Sun/Moon/Mars MD", "Birth - 2029", "Age 0 - 19", "Strong schooling, artistic flair, competitive spirit."],
+         ["Saturn - Saturn", "2029 - 2032", "Age 19 - 22", "Intense college study, hard work, foundational degree."],
+         ["Saturn - Mercury", "2032 - 2035", "Age 22 - 25", "EXCELLENT: Exalted Mercury brings top career break."],
+         ["Saturn - Ketu", "2035 - 2036", "Age 25 - 26", "Brief introspection; avoid impulsive job switches."],
+         ["Saturn - Venus", "2036 - 2039", "Age 26 - 29", "SUPERB: Promotion, luxury assets, marriage window."],
+         ["Saturn - Sun", "2039 - 2040", "Age 29 - 30", "Authority role, management/government recognition."],
+         ["Saturn - Moon", "2040 - 2042", "Age 30 - 32", "Emotional fulfillment, family expansion, travel."],
+         ["Saturn - Mars", "2042 - 2043", "Age 32 - 33", "Bold property purchase or enterprise expansion."],
+         ["Saturn - Rahu", "2043 - 2046", "Age 33 - 36", "Technological/foreign leap; guard against stress."],
+         ["Saturn - Jupiter", "2046 - 2048", "Age 36 - 38", "Major wealth consolidation and senior leadership."]
+     ], [36, 26, 24, 94]), [
+        ("Deep-Dive: Yogakaraka Saturn Mahadasha (Age 19 to 38)", "Running the 19-year Mahadasha of Yogakaraka Saturn during prime youth and career-building years (Ages 19-38) is the single greatest gift in this chart. Every ounce of effort invested in her 20s and 30s compounds into lasting wealth.")
+    ]),
+    ("16", "VIMSHOTTARI DASHA TIMELINE (2048 - 2092)", "Peak Maturity, Exalted Mercury Mahadasha & Long-Term Legacy",
+     (["Dasha Period", "Years", "Age", "Key Life Events & Astrological Reasoning"], [
+         ["Mercury - Mercury", "2048 - 2051", "Age 38 - 41", "PEAK WEALTH: Exalted 2nd/5th lord triggers massive gains."],
+         ["Mercury - Ketu", "2051 - 2052", "Age 41 - 42", "Spiritual insight and research breakthroughs."],
+         ["Mercury - Venus", "2052 - 2055", "Age 42 - 45", "Luxury real estate, advisory/artistic pinnacle."],
+         ["Mercury - Sun", "2055 - 2056", "Age 45 - 46", "Boardroom command and institutional honor."],
+         ["Mercury - Moon", "2056 - 2057", "Age 46 - 47", "Peaceful domestic life, children's milestones."],
+         ["Mercury - Mars", "2057 - 2058", "Age 47 - 48", "Decisive asset expansion and enterprise growth."],
+         ["Mercury - Rahu", "2058 - 2061", "Age 48 - 51", "Global investments and innovative financial strategy."],
+         ["Mercury - Jupiter", "2061 - 2063", "Age 51 - 53", "High philanthropy, mentorship, and abundant wealth."],
+         ["Mercury - Saturn", "2063 - 2065", "Age 53 - 55", "Enduring institutional legacy and asset security."],
+         ["Ketu & Venus MD", "2065 - 2092", "Age 55 - 82", "Lagna Lord Venus MD brings a regal, healthy golden era."]
+     ], [36, 26, 24, 94]), [
+        ("Deep-Dive: Exalted Mercury Mahadasha (Age 38 to 55)", "Following Saturn's disciplined foundation, the 17-year Mahadasha of exalted Mercury (ruling 2nd house of wealth and 5th house of intelligence) elevates the native to an industry leader, investor, and wealth creator.")
+    ]),
+    ("17", "CHRONOLOGICAL LIFE EVENT TIMELINE", "Pinpointing Crucial Ages, Turning Points & Milestone Years",
+     (["Age", "Years", "Milestone", "Astrological Trigger & Guidance"], [
+         ["Age 16 - 18", "2026 - 2028", "Stream Selection", "5H Virgo favors Finance, Tech, Law, or Bio-Sciences."],
+         ["Age 19 - 22", "2029 - 2032", "Higher Education", "Intense study phase at a premier institute."],
+         ["Age 22 - 24", "2032 - 2034", "First Career Break", "Saturn-Mercury AD triggers high-paying placement."],
+         ["Age 26 - 28", "2036 - 2038", "Marriage Union", "Saturn-Venus/Sun AD activates 7H with Jupiter's grace."],
+         ["Age 29 - 32", "2039 - 2042", "Property & Vehicles", "4th Lord Sun & Moon AD bring luxury home and family."],
+         ["Age 34 - 38", "2044 - 2048", "Executive Rise", "Saturn-Jupiter AD cements senior leadership."],
+         ["Age 39 - 45", "2049 - 2055", "Financial Peak", "Exalted Mercury MD generates multi-fold asset growth."]
+     ], [24, 26, 38, 92]), [
+        ("Critical Caution Years (When to Exercise Extra Care)", "Late 2029 to Early 2031 (Age 19-20): Peak Sade Sati overlapping Saturn-Saturn; avoid academic burnout. 2035 (Age 25): Saturn-Ketu transition; avoid hasty job switches. 2043-2045 (Age 33-35): Saturn-Rahu period; conduct thorough legal due diligence before signing joint property agreements.")
+    ]),
+    ("18", "KP SYSTEM: CUSPAL SUB-LORDS & SIGNIFICATORS", "Krishnamurti Paddhati Stellar & Sub-Lord Matrix",
+     (["KP Cusp", "Sign", "Sign L.", "Star L.", "Sub L.", "House Significations & Verdict"], [
+         ["Cusp 1 (Self)", "Taurus", "Venus", "Moon", "Jupiter", "1, 3, 11 (Strong Health & Optimism)"],
+         ["Cusp 2 (Wealth)", "Gemini", "Mercury", "Rahu", "Saturn", "2, 5, 9, 10 (Steady Wealth Accumulation)"],
+         ["Cusp 5 (Intellect)", "Virgo", "Mercury", "Moon", "Mercury", "2, 5, 6, 11 (Competitive Exam Success)"],
+         ["Cusp 6 (Service)", "Libra", "Venus", "Rahu", "Venus", "1, 6, 11 (Victory Over Rivals)"],
+         ["Cusp 7 (Marriage)", "Scorpio", "Mars", "Saturn", "Jupiter", "5, 7, 11 (Harmonious, Prosperous Union)"],
+         ["Cusp 9 (Fortune)", "Capricorn", "Saturn", "Moon", "Venus", "1, 6, 9, 10 (Long-Distance Luck)"],
+         ["Cusp 10 (Career)", "Aquarius", "Saturn", "Rahu", "Mercury", "2, 5, 6, 10, 11 (High Executive Rise)"],
+         ["Cusp 11 (Gains)", "Pisces", "Jupiter", "Jupiter", "Venus", "1, 6, 11 (Fulfillment of Desires)"]
+     ], [28, 22, 20, 20, 20, 70]), [
+        ("KP Golden Rule Application for Career & Finance", "In Krishnamurti Paddhati, a planet gives the results of its Star Lord, and the Sub-Lord decides whether the promise is positive or negative. Because the 10th Cusp Sub-Lord is exalted Mercury (2, 5, 10, 11) and the 11th Cusp Sub-Lord is own-sign Venus, the promise of wealth and status is 100% locked.")
+    ]),
+    ("19", "SHADBALA, BHAVA BALA & PLANETARY AVASTHAS", "Six-Fold Mathematical Strength & Alertness State of Planets",
+     (["Planet", "Virupas", "Rupas", "Required", "Strength %", "Avastha State"], [
+         ["Sun", "412 Virupas", "6.87 Rupas", "5.00 Rupas", "137% (Strong)", "Jagrat (Wide Awake)"],
+         ["Moon", "518 Virupas", "8.63 Rupas", "6.00 Rupas", "144% (Exalted)", "Jagrat (Wide Awake)"],
+         ["Mars", "355 Virupas", "5.91 Rupas", "5.00 Rupas", "118% (Above Avg)", "Swapna (Dreaming)"],
+         ["Mercury", "495 Virupas", "8.25 Rupas", "7.00 Rupas", "118% (Exalted)", "Jagrat (Wide Awake)"],
+         ["Jupiter", "470 Virupas", "7.83 Rupas", "6.50 Rupas", "120% (Strong)", "Jagrat (Wide Awake)"],
+         ["Venus", "460 Virupas", "7.66 Rupas", "5.50 Rupas", "139% (Dominant)", "Jagrat (Wide Awake)"],
+         ["Saturn", "390 Virupas", "6.50 Rupas", "5.00 Rupas", "130% (Yogakaraka)", "Swapna (Dreaming)"]
+     ], [22, 28, 25, 25, 32, 48]), [
+        ("How Shadbala Ratios Shape Real Life", "Moon (144%), Venus (139%), Sun (137%), and Saturn (130%) far exceed their minimum required Shadbala thresholds. When the Lagna Lord (Venus), Moon, and Yogakaraka (Saturn) simultaneously hold over 130% strength, the individual possesses extraordinary stamina to outperform peers.")
+    ]),
+    ("20", "5-YEAR VARSHPHAL & TRANSIT FORECAST (2026-2031)", "Annual Tajika Progression & Major Saturn/Jupiter Transits", None, [
+        ("2026 - 2027 (Age 16 - 17): Academic Sharpening & Focus", "Exalted Jupiter transiting Cancer (3H) and Leo (4H) boosts self-confidence, communication skills, and foundational board/entrance exam preparation."),
+        ("2027 - 2028 (Age 17 - 18): Competitive Exams & Admission", "Jupiter transits Virgo (over natal 5th house Sun-Mercury-Saturn). This is a golden transit for clearing competitive entrance exams and securing admission into a premier institution. Maintain strict sleep schedules as Sade Sati begins."),
+        ("2028 - 2029 (Age 18 - 19): Transition to University", "Jupiter transits Libra (6H) and Scorpio (7H), expanding social circles, mentorships, and institutional recognition."),
+        ("2029 - 2031 (Age 19 - 21): Saturn Mahadasha Dawn", "As Yogakaraka Saturn's Mahadasha commences, Vaanya undergoes profound maturation, gravitating toward serious internships and leadership skills.")
+    ]),
+    ("21", "VEDIC NUMEROLOGY & COMPLETE DO'S AND DON'TS", "Mulank, Bhagyank & Actionable Behavioral Guardrails",
+     (["Numerology Pillar", "Calculated Value", "Planet", "Strategic Application"], [
+         ["Mulank (Psychic No.)", "2 (Born on 29th: 2+9=11 -> 2)", "Moon", "Intuitive, diplomatic, creative"],
+         ["Bhagyank (Destiny)", "6 (Full DOB Sum)", "Venus", "Magnetic, artistic, luxury-loving"],
+         ["Lucky Numbers", "2, 5, 6, 8", "Moon/Merc/Ven/Sat", "Use for accounts, dates & plates"],
+         ["Numbers to Avoid", "4, 9 (For high-risk deals)", "Rahu / Mars", "Avoid major contracts on 4th, 9th"],
+         ["Lucky Colors & Days", "White, Emerald Green, Blue", "Fri, Wed, Sat", "Wear during exams & interviews"]
+     ], [38, 48, 32, 62]), [
+        ("THE GOLDEN DO'S (HABITS THAT MULTIPLY LUCK)", "1. DO pursue structured analytical/commercial fields (Finance, Tech, Law, Med). 2. DO maintain a clutter-free desk facing East or North (activates 5H Mercury). 3. DO automate savings into long-term assets to counter 2nd house Ketu. 4. DO drink water from a pure silver glass daily to calm the Moon."),
+        ("THE STRICT DON'TS (PITFALLS TO AVOID)", "1. DON'T let perfectionism paralyze action (Virgo 5H cluster over-thinking). 2. DON'T use sharp or sarcastic speech with family when stressed (2H Ketu). 3. DON'T rush into marriage before age 26 or neglect physical exercise.")
+    ])
+]
+
+HI_PAGES = [
+    ("02", "अवकाहड़ा चक्र और पंचांग", "बुनियादी खगोलीय और जन्म कुंडली संरेखण",
+     (["पैरामीटर", "जन्म मूल्य", "पैरामीटर", "जन्म मूल्य"], [
+         ["लग्न (Ascendant)", "वृषभ (Taurus) 14° 52'", "लग्न स्वामी", "शुक्र (Venus)"],
+         ["चंद्र राशि (Rashi)", "वृषभ (Taurus) 06° 18'", "राशि स्वामी", "शुक्र (Venus)"],
+         ["नक्षत्र और पद", "कृतिका - पद 3", "नक्षत्र स्वामी", "सूर्य (Sun)"],
+         ["जन्म तिथि", "कृष्ण सप्तमी", "वार (दिन)", "बुधवार / शुक्र का प्रभाव"],
+         ["योग और करण", "वरीयान / बालव", "गण और योनि", "राक्षस / मेष"],
+         ["नाड़ी और वर्ण", "अंत्य / वैश्य", "पाया (पैर)", "स्वर्ण (Gold)"],
+         ["सूर्य राशि (वैदिक)", "कन्या (Virgo)", "सक्रिय दशा", "शनि / बुध"]
+     ], [45, 45, 45, 45]), [
+        ("1. वार और तिथि का प्रभाव", "मजबूत शुक्र और बुध के प्रभाव के साथ जन्मे, जातक में परिष्कृत सौंदर्य संवेदनाओं के साथ तेज विश्लेषणात्मक बुद्धि है। कृष्ण पक्ष का जन्म प्राकृतिक लचीलापन प्रदान करता है, जो शुरुआती बाधाओं को सफलता की सीढ़ियों में बदल देता है।"),
+        ("2. लग्न और राशि स्तंभ (वृषभ)", "वृषभ लग्न और उच्च के चंद्रमा के साथ, आप ईंट दर ईंट जीवन का निर्माण करते हैं। आप शांत विश्वसनीयता, दृढ़ संकल्प और गुणवत्ता के प्रति रुचि प्रदर्शित करते हैं।"),
+        ("3. नक्षत्र स्तंभ (कृतिका / रोहिणी धुरी)", "यह तारकीय हस्ताक्षर रचनात्मक उर्वरता के साथ-साथ सत्य की धार प्रदान करता है। आप झूठे दिखावे को सीधे काटते हैं और अपने परिवार की दृढ़ता से रक्षा करते हैं।")
+    ]),
+    ("05", "ग्रहीय स्थिति और अष्टकवर्ग", "सटीक नाक्षत्र देशांतर, नक्षत्र स्वामी, उप-स्वामी और बिंदु",
+     (["ग्रह", "राशि", "डिग्री", "नक्षत्र", "राशि स्वामी", "नक्षत्र स्वामी", "उप-स्वामी", "स्थिति"], [
+         ["लग्न", "वृषभ", "14° 52'", "रोहिणी-2", "शुक्र", "चंद्रमा", "गुरु", "वर्गोत्तम"],
+         ["सूर्य", "कन्या", "12° 06'", "हस्त-1", "बुध", "चंद्रमा", "चंद्रमा", "मित्र"],
+         ["चंद्र", "वृषभ", "06° 18'", "कृतिका-3", "शुक्र", "सूर्य", "शुक्र", "उच्च (Exalted)"],
+         ["मंगल", "तुला", "29° 18'", "विशाखा-3", "शुक्र", "गुरु", "मंगल", "आत्मकारक"],
+         ["बुध", "कन्या", "02° 14'", "उ.फाल्गुनी", "बुध", "सूर्य", "शनि", "उच्च (Exalted)"],
+         ["गुरु(R)", "मीन", "01° 52'", "पू.भाद्र-4", "गुरु", "गुरु", "शुक्र", "स्वराशि"],
+         ["शुक्र", "तुला", "14° 10'", "स्वाति-3", "शुक्र", "राहु", "बुध", "मूलत्रिकोण"],
+         ["शनि", "कन्या", "14° 02'", "हस्त-2", "बुध", "चंद्रमा", "राहु", "योगकारक"],
+         ["राहु", "धनु", "09° 11'", "मूल-3", "गुरु", "केतु", "शुक्र", "8H शोध"],
+         ["केतु", "मिथुन", "09° 11'", "आर्द्रा-1", "बुध", "राहु", "राहु", "2H विरक्ति"]
+     ], [22, 20, 18, 24, 20, 20, 20, 36]), [
+        ("सर्वाष्टकवर्ग सारांश (प्रति भाव बिंदु बल)", "H1: 31 | H2: 27 | H3: 30 | H4: 29 | H5: 26 | H6: 32 | H7: 25 | H8: 22 | H9: 29 | H10: 33 | H11: 35 | H12: 20. कारण: 10वें भाव में 33 बिंदु और 11वें भाव में 35 बिंदु (फलदीपिका नियम) यह गारंटी देते हैं कि करियर के प्रयास उच्च वित्तीय लाभ देते हैं।")
+    ]),
+    ("06", "व्यक्तिगत ग्रहीय प्रोफाइल (सूर्य से गुरु तक)", "प्रत्येक ग्रह स्थिति, स्वामित्व और दृष्टि के अनुसार कैसे कार्य करता है", None, [
+        ("1. सूर्य (पंचम भाव में चतुर्थेश - कन्या)", "सूर्य आपके घर के चौथे भाव पर शासन करता है और 5वें भाव में बैठता है। आपकी भावनात्मक सुरक्षा बौद्धिक उपलब्धि से जुड़ी है। 11वें भाव पर सूर्य की 7वीं दृष्टि अचल संपत्ति और शिक्षा को उच्च वित्तीय लाभ से जोड़ती है।"),
+        ("2. चंद्रमा (लग्न में उच्च का तृतीयेश - वृषभ)", "चंद्रमा पहले भाव में वृषभ राशि में उच्च का है। असाधारण भावनात्मक आकर्षण, स्मृति प्रतिधारण और अंतर्ज्ञान प्रदान करता है। 7वें भाव पर चंद्रमा की 7वीं दृष्टि एक समर्पित जीवनसाथी लाती है।"),
+        ("3. मंगल (छठे/सातवें कस्प में 7वां और 12वां स्वामी)", "मंगल साझेदारी (7वें) और दूर के देशों (12वें) को नियंत्रित करता है। आप रिश्तों में भयंकर वफादारी और सुरक्षात्मक आग लाते हैं। आप व्यापार या विवाह में बेईमानी बर्दाश्त नहीं करते हैं।"),
+        ("4. बुध (5वें भाव में उच्च का द्वितीयेश और पंचमेश - कन्या)", "बुध उच्च अवस्था में धन (2रे) और बुद्धि (5वें) पर शासन करता है। एक शीर्ष स्तर का धन-सह-बुधादित्य योग बनाता है। आपके गणितीय और विश्लेषणात्मक कौशल सीधे मूर्त धन में परिवर्तित होते हैं।"),
+        ("5. गुरु (11वें भाव में 8वां और 11वां स्वामी - मीन)", "गुरु 11वें भाव में अपनी ही राशि मीन में विराजमान है। गुरु की 5वीं दृष्टि संचार (3H) को आशीर्वाद देती है; इसकी 7वीं दृष्टि शिक्षा/बच्चों (5H) की रक्षा करती है; इसकी 9वीं दृष्टि विवाह (7H) की रक्षा करती है।")
+    ]),
+    ("07", "व्यक्तिगत ग्रहीय प्रोफाइल (शुक्र से केतु तक)", "बाहरी ग्रह, छाया नोड्स और प्रमुख युति", None, [
+        ("6. शुक्र (स्वराशि तुला में लग्नेश और षष्ठेश)", "लग्न स्वामी शुक्र अपनी मूलत्रिकोण राशि तुला में बैठता है। आप कूटनीति, आकर्षण और क्षमता के माध्यम से प्रतिद्वंद्वियों पर विजय प्राप्त करते हैं। कानून, चिकित्सा, वित्त, डिजाइन और प्रबंधन में उत्कृष्ट।"),
+        ("7. शनि (5वें भाव में योगकारक 9वां और 10वां स्वामी)", "वृषभ लग्न के लिए, शनि भाग्य (9H) और करियर (10H) पर शासन करता है। गहरी एकाग्रता और जटिल प्रणालियों पर महारत देता है। 7H पर शनि की 3री दृष्टि परिपक्वता के लिए विवाह में थोड़ी देरी करती है; 11H पर इसकी 7वीं दृष्टि स्थिर धन सुनिश्चित करती है।"),
+        ("8. राहु 8वें भाव में (धनु) और केतु 2रे भाव में (मिथुन)", "नोडल धुरी 2रे/8वें वित्तीय अक्ष को काटती है। 8H में राहु अलौकिक अनुसंधान अंतर्ज्ञान और अचानक अप्रत्याशित लाभ देता है। 2H में केतु वाणी को कुंद बनाता है; पारिवारिक कूटनीति का अभ्यास करें।"),
+        ("9. प्रमुख युति: सूर्य + शनि + बुध कन्या राशि में", "जब दूसरा/5वां स्वामी (बुध), चौथा स्वामी (सूर्य), और 9वां/10वां स्वामी (शनि) कन्या राशि में मिलते हैं, तो जातक के पास एक कार्यकारी विश्लेषक दिमाग होता है जो संरचित, लंबे समय तक चलने वाले संस्थागत साम्राज्य बनाने में सक्षम होता है।")
+    ]),
+    ("08", "भावफल: भाव 1 से 6 तक जीवन", "कारक, भाव स्वामी की स्थिति और व्यावहारिक अभिव्यक्तियाँ", None, [
+        ("पहला भाव (तनु भाव - वृषभ): जीवन शक्ति और व्यक्तित्व", "शुक्र द्वारा शासित, उच्च चंद्रमा द्वारा कब्जा कर लिया गया। आपके पास एक चुंबकीय, जमीन से जुड़ा व्यक्तित्व, मजबूत संविधान और उच्च सार्वजनिक संबंध क्षमता है।"),
+        ("दूसरा भाव (धन भाव - मिथुन): धन, वाणी और परिवार", "उच्च बुध द्वारा शासित, केतु द्वारा कब्जा कर लिया गया, शनि द्वारा दृष्ट। 26 वर्ष की आयु के बाद वित्तीय संचय तेज हो जाता है। पारिवारिक बातचीत के दौरान वाणी को गर्म रखें।"),
+        ("तीसरा भाव (सहज भाव - कर्क): साहस और संचार", "उच्च चंद्रमा द्वारा शासित, गुरु की 5वीं दृष्टि से धन्य। आपके संचार में ज्ञान और अधिकार है। डिजिटल मीडिया और लेखन मान्यता लाते हैं।"),
+        ("चौथा भाव (सुख भाव - सिंह): माता, घर और वाहन", "सूर्य (5H में) द्वारा शासित। घरेलू वातावरण गरिमापूर्ण और शिक्षा-केंद्रित है। आप स्व-अर्जित धन के माध्यम से लक्जरी वाहन और प्रमुख अचल संपत्ति प्राप्त करेंगे।"),
+        ("5वां भाव (पुत्र/विद्या भाव - कन्या): बुद्धि और रोमांस", "उच्च बुध, सूर्य और योगकारक शनि द्वारा कब्जा कर लिया गया, गुरु द्वारा दृष्ट। यह आपके चार्ट का पावरहाउस घर है, जो अकादमिक गौरव की गारंटी देता है।"),
+        ("छठा भाव (रिपु/रोग भाव - तुला): कार्य, प्रतिद्वंद्वी और स्वास्थ्य", "स्वराशि शुक्र द्वारा कब्जा कर लिया गया। आप प्रतियोगी परीक्षाओं और संरचित कॉर्पोरेट वातावरण में पनपते हैं। गुर्दे के जलयोजन और पीठ के निचले हिस्से की मुद्रा बनाए रखें।")
+    ]),
+    ("09", "भावफल: भाव 7 से 12 तक जीवन", "साझेदारी, दीर्घायु, भाग्य, करियर, लाभ और मुक्ति", None, [
+        ("7वां भाव (जाया भाव - वृश्चिक): विवाह और अनुबंध", "मंगल द्वारा शासित, गुरु की 9वीं दृष्टि और चंद्रमा की 7वीं दृष्टि प्राप्त कर रहा है। आप गहरी, सब-या-कुछ नहीं वफादारी चाहते हैं। गुरु एक बुद्धिमान, समर्पित जीवनसाथी सुनिश्चित करता है।"),
+        ("8वां भाव (रंध्र भाव - धनु): दीर्घायु और अनुसंधान", "गुरु (11H में) द्वारा शासित, राहु द्वारा कब्जा कर लिया गया। मजबूत दीर्घायु और कराधान, अनुसंधान, या गुप्त विज्ञान में सफलता। सट्टा जुए से बचें।"),
+        ("9वां भाव (धर्म भाव - मकर): भाग्य और गुरु", "योगकारक शनि द्वारा शासित। आपका भाग्य अनुशासन, नैतिकता और दीर्घकालिक दृढ़ता के माध्यम से सक्रिय होता है। पिता और गुरुओं के साथ मजबूत कर्म बंधन।"),
+        ("10वां भाव (कर्म भाव - कुंभ): करियर और प्रसिद्धि", "शनि द्वारा शासित (5H में स्थित)। करियर में बड़े संगठन, वित्त, प्रौद्योगिकी, कानून या संस्थागत शासन शामिल हैं। अडिग पेशेवर वृद्धि।"),
+        ("11वां भाव (लाभ भाव - मीन): लाभ और नेटवर्क", "स्वराशि गुरु (R) द्वारा कब्जा कर लिया गया और सूर्य, बुध और शनि द्वारा दृष्ट। एक विशाल धन-लाभ योग बनाता है। कई आय धाराएं इच्छाओं को पूरा करती हैं।"),
+        ("12वां भाव (व्यय भाव - मेष): विदेश और मुक्ति", "मंगल द्वारा शासित। व्यय आत्म-विकास और संपत्ति की ओर निर्देशित है। अंतरराष्ट्रीय सहयोग और बहुराष्ट्रीय करियर भूमिकाओं के लिए अनुकूल।")
+    ]),
+    ("10", "मल्टी-सिस्टम पीयर रिव्यू और एकीकृत फैसला", "केपी, बीपीएचएस, जैमिनी, फलदीपिका और लघु पाराशरी का क्रॉस-एग्जामिनेशन",
+     (["जीवन क्षेत्र", "बीपीएचएस / पाराशरी", "केपी सिस्टम", "जैमिनी सूत्र", "अंतिम फैसला"], [
+         ["धन और स्थिति", "उच्च 2L/5L + 11L 11H में", "11वां उप-स्वामी गुरु/शुक्र", "AK/AmK 11H से जुड़ा", "एकीकृत: उच्च धन"],
+         ["करियर डोमेन", "5H में योगकारक शनि", "10वां उप-स्वामी 5-6-10-11", "10H में कारकांश", "एकीकृत: कार्यकारी"],
+         ["विवाह का समय", "शनि की तीसरी दृष्टि देरी करती है", "7वां उप-स्वामी 2-7-11", "स्वराशि में DK गुरु", "संघर्ष: आयु 25 बनाम 28"],
+         ["मांगलिक प्रभाव", "मंगल 7H को प्रभावित करता है", "गुरु की 9वीं दृष्टि बचाती है", "मजबूत DK रक्षा करता है", "एकीकृत: रद्द (Cancelled)"]
+     ], [30, 42, 38, 38, 32]), [
+        ("1. जहां सभी 6 सिस्टम सहमत हैं (100% एकीकृत फैसले)", "बौद्धिक और वित्तीय महारत: बीपीएचएस (उच्च दूसरा/5वां स्वामी बुध + स्व-राशि 11वां स्वामी गुरु), केपी, फलदीपिका (11H में 35 बिंदु), और जैमिनी सर्वसम्मति से उच्च वित्तीय स्वतंत्रता और कार्यकारी अधिकार की पुष्टि करते हैं।"),
+        ("2. जहां सिस्टम भिन्न होते हैं और तकनीकी तर्क", "विवाह का समय: बीपीएचएस देरी के कारण के रूप में 7वें भाव पर शनि की तीसरी दृष्टि को चिह्नित करता है। हालांकि, केपी और फलदीपिका इस डर को खत्म करते हैं क्योंकि मीन राशि में गुरु 7वें भाव पर सटीक 9वीं त्रिकोणीय दृष्टि डालता है, जो एक दिव्य ढाल के रूप में कार्य करता है। फैसला: 26-28 वर्ष की आयु के आसपास विवाह स्थिर और समृद्ध होगा।")
+    ]),
+    ("11", "जैमिनी चर कारक: 7 आत्मा संकेतक", "ग्रहीय डिग्री (जैमिनी सूत्र) के माध्यम से आत्मा के उद्देश्य को डिकोड करना",
+     (["चर कारक", "ग्रह और डिग्री", "जैमिनी भूमिका", "जीवन अभिव्यक्ति"], [
+         ["आत्मकारक (AK)", "मंगल (29° 18')", "आत्मा राजा और प्राथमिक पाठ", "साहस, धैर्य में महारत हासिल करना"],
+         ["अमात्यकारक (AmK)", "शुक्र (14° 10')", "करियर और पेशेवर वृद्धि", "कूटनीतिक नेतृत्व, विलासिता"],
+         ["भ्रातृकारक (BK)", "शनि (14° 02')", "भाई-बहन, गुरु और निष्पादन", "संरचित दृढ़ता"],
+         ["मातृकारक (MK)", "सूर्य (12° 06')", "माता, अभयारण्य और संपत्ति", "गरिमापूर्ण घरेलू मूल्य"],
+         ["पुत्रकारक (PK)", "चंद्र (06° 18')", "रचनात्मकता और भविष्य की संतान", "सहानुभूतिपूर्ण मेंटरशिप"],
+         ["ज्ञातिकारक (GK)", "बुध (02° 14')", "प्रतियोगिता और समस्या-समाधान", "तर्क के माध्यम से प्रतिद्वंद्वियों को हराना"],
+         ["दारकारक (DK)", "गुरु (01° 52')", "जीवनसाथी और साथी की प्रकृति", "बुद्धिमान, नैतिक, सुरक्षात्मक जीवनसाथी"]
+     ], [36, 32, 52, 60]), [
+        ("आत्मकारक (मंगल) + अमात्यकारक (शुक्र) संश्लेषण", "मंगल के आत्मकारक होने से, आपकी आत्मा आंतरिक धैर्य में महारत हासिल करते हुए निडर पहल विकसित करने के लिए यहां है। क्योंकि शुक्र अपनी ही राशि में अमात्यकारक के रूप में कार्य करता है, आपका करियर कूटनीतिक अनुग्रह (शुक्र) के साथ योद्धा जैसी ड्राइव (मंगल) का मिश्रण है।"),
+        ("दारकारक (मीन राशि में गुरु) - सोलमेट ब्लूप्रिंट", "जैमिनी ज्योतिष में, सबसे कम डिग्री वाला ग्रह (मीन राशि में 01° 52' पर गुरु) आपके जीवनसाथी का प्रतिनिधित्व करता है। 11वें भाव में अपनी ही राशि में गुरु एक ऐसे साथी को इंगित करता है जो कुलीन, आर्थिक रूप से निपुण है, और आपके सबसे बड़े दोस्त के रूप में कार्य करता है।")
+    ]),
+    ("12", "प्रेम, विवाह और मांगलिक मूल्यांकन", "5वां भाव रोमांस, 7वां भाव प्रतिबद्धता और विवाह की खिड़कियां",
+     (["चरण", "अनुमानित समयरेखा", "ऑपरेटिंग दशा", "ज्योतिषीय रेटिंग"], [
+         ["विंडो 1", "2035 के अंत - 2036 के मध्य (आयु 25-26)", "शनि MD - शुक्र AD", "अच्छा (प्रारंभिक प्रस्ताव)"],
+         ["विंडो 2", "2037 की शुरुआत - 2038 के अंत (आयु 27-28)", "शनि MD - सूर्य/चंद्र AD", "उत्कृष्ट (चरम सद्भाव)"],
+         ["विंडो 3", "2039 के मध्य - 2040 के अंत (आयु 29-30)", "शनि MD - मंगल/राहु AD", "मजबूत (करियर के बाद का मिलन)"]
+     ], [25, 55, 50, 50]), [
+        ("5वां भाव और 7वां भाव संबंध गतिशीलता", "5वें भाव में कन्या (शनि + सूर्य + बुध) और 7वें भाव में वृश्चिक के साथ, आप प्यार को हल्के में नहीं लेते हैं। आकस्मिक रिश्ते आपकी रुचि नहीं रखते हैं। आप अपना दिल खोलने से पहले साथी की बुद्धि और सत्यनिष्ठा का परीक्षण करते हैं।"),
+        ("संपूर्ण मांगलिक दोष तकनीकी लेखा परीक्षा", "मंगल 7वें और 12वें भाव पर शासन करता है, जिससे एक हल्का मांगलिक हस्ताक्षर बनता है। फलदीपिका और बीपीएचएस नियमों के तहत, अपनी स्वराशि मीन से 7वें भाव पर गुरु की सीधी 9वीं दृष्टि अकारक मंगल की गर्मी को पूरी तरह से बेअसर कर देती है। 26 वर्ष की आयु के बाद विवाह भावनात्मक परिपक्वता सुनिश्चित करता है।")
+    ]),
+    ("13", "करियर कॉलिंग, धन और राज योग", "10वां भाव कमांड, धन योग और आदर्श व्यावसायिक क्षेत्र", None, [
+        ("चार्ट में मौजूद शीर्ष राज योग और धन योग", "1. धर्म-कर्म अधिपति योग (5वें त्रिकोण में 9वें और 10वें स्वामी के रूप में शनि): वरिष्ठ प्रबंधन या स्वतंत्र अधिकार के लिए अजेय वृद्धि। 2. उच्च बुधादित्य और धन योग: बुद्धिमत्ता को सीधे धन सृजन से जोड़ता है। 3. लाभ बृहस्पति योग: आजीवन वित्तीय तरलता की गारंटी देता है। 4. विपरीत राज योग पैटर्न: प्रतिद्वंद्वियों पर विजय।"),
+        ("आदर्श करियर और व्यावसायिक क्षेत्र", "प्राथमिक धाराएँ: कॉर्पोरेट वित्त, चार्टर्ड अकाउंटेंसी, निवेश बैंकिंग, फिनटेक, डेटा साइंस, या एक्चुरियल एनालिटिक्स। माध्यमिक धाराएँ: कानून, सिविल/प्रशासन
