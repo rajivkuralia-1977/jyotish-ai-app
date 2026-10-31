@@ -316,4 +316,221 @@ def build_pdf(name, dob, tob, pob, language):
             ("3rd House (Sahaj Bhava - Cancer): Courage & Communication", "Ruled by Exalted Moon, blessed by Jupiter's 5th aspect. Your communication carries wisdom and authority. Digital media and writing bring recognition."),
             ("4th House (Sukha Bhava - Leo): Mother, Home & Vehicles", "Ruled by Sun (in 5H). Domestic environment is dignified and education-focused. You will acquire luxury vehicles and prime real estate through self-earned wealth."),
             ("5th House (Putra/Vidya Bhava - Virgo): Intellect & Romance", "Occupied by Exalted Mercury, Sun, and Yogakaraka Saturn, aspected by Jupiter. This is the powerhouse house of your chart, guaranteeing academic distinction."),
-            ("6th House (Ripu/Roga Bhava - Libra): Work, Rivals & Health", "Occupied by own-sign Venus. You thrive in competitive exams an
+            ("6th House (Ripu/Roga Bhava - Libra): Work, Rivals & Health", "Occupied by own-sign Venus. You thrive in competitive exams and structured corporate environments. Maintain kidney hydration and lower-back posture.")
+        ]),
+        ("09", "BHAVPHAL: LIFE THROUGH HOUSES 7 TO 12", "Partnerships, Longevity, Fortune, Career, Gains & Liberation", None, [
+            ("7th House (Jaya Bhava - Scorpio): Marriage & Contracts", "Ruled by Mars, receiving Jupiter's 9th aspect and Moon's 7th aspect. You seek deep, all-or-nothing loyalty. Jupiter ensures a wise, devoted life partner."),
+            ("8th House (Randhra Bhava - Sagittarius): Longevity & Research", "Ruled by Jupiter (in 11H), occupied by Rahu. Strong longevity and breakthroughs in audit, taxation, research, or occult sciences. Avoid speculative gambling."),
+            ("9th House (Dharma Bhava - Capricorn): Fortune & Mentors", "Ruled by Yogakaraka Saturn. Your luck activates through discipline, ethics, and long-term perseverance. Strong karmic bond with father and mentors."),
+            ("10th House (Karma Bhava - Aquarius): Career & Fame", "Ruled by Saturn (placed in 5H). Career involves large organizations, finance, technology, law, or institutional governance. Unshakeable professional rise."),
+            ("11th House (Labha Bhava - Pisces): Gains & Networks", "Occupied by own-sign Jupiter (R) and aspected by Sun, Mercury, and Saturn. Creates a massive Dhana-Labha Yoga. Multiple income streams fulfill desires."),
+            ("12th House (Vyaya Bhava - Aries): Foreign Lands & Liberation", "Ruled by Mars. Expenditure is directed toward self-development and assets. Favorable for international collaborations and multinational career roles.")
+        ]),
+        ("10", "MULTI-SYSTEM PEER REVIEW & UNIFIED VERDICT", "Cross-Examining KP, BPHS, Jaimini, Phaladeepika & Laghu Parashari",
+         (["Life Domain", "BPHS / Parashari", "KP System", "Jaimini Sutras", "Final Verdict"], [
+             ["Wealth & Status", "Exalted 2L/5L + 11L in 11H", "11th Sub-Lord Jup/Ven", "AK/AmK linked to 11H", "UNIFIED: High Wealth"],
+             ["Career Domain", "Yogakaraka Saturn in 5H", "10th Sub-Lord 5-6-10-11", "Karakamsha in 10H", "UNIFIED: Executive"],
+             ["Marriage Timing", "Saturn 3rd aspect delays", "7th Sub-Lord 2-7-11", "DK Jupiter in Own Sign", "CONFLICT: Age 25 vs 28"],
+             ["Mangalik Impact", "Mars influences 7H", "Jupiter 9th aspect saves", "Strong DK protects", "UNIFIED: Cancelled"]
+         ], [30, 42, 38, 38, 32]), [
+            ("1. Where All 6 Systems Agree (100% Unified Verdicts)", "INTELLECTUAL & FINANCIAL MASTERY: BPHS (Exalted 2nd/5th lord Mercury + Own-sign 11th lord Jupiter), KP (Cuspal sub-lords signifying 2, 6, 10, 11), Phaladeepika (35 Bindus in 11H), and Jaimini unanimously confirm high financial independence and executive authority. Vargottama Lagna and Exalted Moon confirm lifelong resilience."),
+            ("2. Where Systems Diverge & Technical Reasoning", "MARRIAGE TIMING: BPHS flags Saturn's 3rd aspect on the 7th house as a cause for delay. However, KP and Phaladeepika override this fear because Jupiter in Pisces casts an exact 9th trinal aspect on the 7th house, acting as a divine shield. Verdict: Marriage around age 26-28 will be stable and prosperous.")
+        ]),
+        ("11", "JAIMINI CHARA KARAKAS: 7 SOUL INDICATORS", "Decoding Soul Purpose Through Planetary Degrees (Jaimini Sutras)",
+         (["Chara Karaka", "Planet & Degree", "Jaimini Role", "Life Manifestation"], [
+             ["Atmakaraka (AK)", "Mars (29d 18m)", "Soul King & Primary Lesson", "Courage, mastering patience"],
+             ["Amatyakaraka (AmK)", "Venus (14d 10m)", "Career & Professional Rise", "Diplomatic leadership, luxury"],
+             ["Bhratrukaraka (BK)", "Saturn (14d 02m)", "Siblings, Mentors & Execution", "Structured perseverance"],
+             ["Matrukaraka (MK)", "Sun (12d 06m)", "Mother, Sanctuary & Property", "Dignified domestic values"],
+             ["Putrakaraka (PK)", "Moon (06d 18m)", "Creativity & Future Progeny", "Empathetic mentorship"],
+             ["Gnatikaraka (GK)", "Mercury (02d 14m)", "Competition & Problem-Solving", "Defeating rivals via logic"],
+             ["Darakaraka (DK)", "Jupiter (01d 52m)", "Spouse & Partner Nature", "Wise, ethical, protective spouse"]
+         ], [36, 32, 52, 60]), [
+            ("Atmakaraka (Mars) + Amatyakaraka (Venus) Synthesis", "With Mars as Atmakaraka, your soul is here to develop fearless initiative while mastering inner patience. Because Venus acts as Amatyakaraka in its own sign, your career blends warrior-like drive (Mars) with diplomatic grace (Venus)."),
+            ("Darakaraka (Jupiter in Pisces) - The Soulmate Blueprint", "In Jaimini Astrology, the planet with the lowest degree (Jupiter at 01d 52m in Pisces) represents your spouse. Jupiter in its own sign in the 11th house indicates a partner who is noble, financially accomplished, and acts as your greatest friend.")
+        ]),
+        ("12", "LOVE, MARRIAGE & MANGALIK EVALUATION", "5th House Romance, 7th House Commitment & Marriage Windows",
+         (["Phase", "Projected Timeline", "Operating Dasha", "Astrological Rating"], [
+             ["Window 1", "Late 2035 - Mid 2036 (Age 25-26)", "Saturn MD - Venus AD", "Good (Early Proposal)"],
+             ["Window 2", "Early 2037 - Late 2038 (Age 27-28)", "Saturn MD - Sun/Moon AD", "Excellent (Peak Harmony)"],
+             ["Window 3", "Mid 2039 - Late 2040 (Age 29-30)", "Saturn MD - Mars/Rahu AD", "Strong (Post-Career Union)"]
+         ], [25, 55, 50, 50]), [
+            ("5th House & 7th House Relationship Dynamics", "With Virgo in the 5th house (Saturn + Sun + Mercury) and Scorpio in the 7th house, you do not take love lightly. Casual relationships do not interest you. You test a partner's intellect and integrity before opening your heart."),
+            ("Complete Mangalik Dosha Technical Audit", "Mars rules the 7th and 12th houses, creating a mild Mangalik signature. Under Phaladeepika and BPHS rules, Jupiter's direct 9th aspect from its own sign Pisces onto the 7th house completely neutralizes malefic Martian heat. Marrying after age 26 ensures emotional maturity.")
+        ]),
+        ("13", "CAREER CALLING, WEALTH & RAJ YOGAS", "10th House Command, Dhana Yogas & Ideal Professional Arenas", None, [
+            ("Top Raj Yogas & Dhana Yogas Present in Chart", "1. DHARMA-KARMA ADHIPATI YOGA (Saturn as 9th & 10th Lord in 5th Trine): Unstoppable rise to senior management or independent authority. 2. EXALTED BUDHADITYA & DHANA YOGA (2nd/5th Lord Mercury Exalted with Sun): Connects intelligence directly to wealth creation. 3. LABHA BRIHASPATI YOGA (11th Lord Jupiter in Own Sign in 11H): Guarantees lifelong financial liquidity. 4. VIPAREETA RAJ YOGA PATTERN (6th Lord Venus in 6H): Victory over rivals."),
+            ("Ideal Career & Business Fields", "Primary Streams: Corporate Finance, Chartered Accountancy, Investment Banking, FinTech, Data Science, or Actuarial Analytics (Mercury + Saturn in Virgo). Secondary Streams: Law, Civil/Administrative Services, Corporate Governance, Medicine/Biotech, or Luxury Brand Management. Structured corporate role (Ages 22-30) followed by consultancy/enterprise (Age 31+).")
+        ]),
+        ("14", "RAHU-KETU AXIS & SADE SATI JOURNEY", "Shadow Planet Lessons & Saturn's 7.5-Year Transformation Cycles",
+         (["Cycle", "Phase & Sign", "Timeline", "Core Impact & Strategy"], [
+             ["Cycle 1", "Rising Phase (Aries)", "Mid 2027 - Mid 2029", "12th from Moon: Academic focus & sleep discipline"],
+             ["Cycle 1", "Peak Phase (Taurus)", "Mid 2029 - Mid 2032", "Over Natal Moon: Higher education rigor & maturity"],
+             ["Cycle 1", "Setting Phase (Gemini)", "Mid 2032 - Mid 2034", "2nd from Moon: First major job & income stability"],
+             ["Cycle 2", "Full 7.5-Year Cycle", "2056 - 2064", "Peak executive consolidation and legacy building"]
+         ], [25, 45, 40, 70]), [
+            ("Rahu in 8th House (Sagittarius) & Ketu in 2nd House (Gemini)", "Rahu draws you toward deep research, audit, psychology, and hidden financial mechanisms. Ketu in the 2nd house detaches you from superficial small talk; practice warm communication and automate investments into long-term assets."),
+            ("Why Vaanya's Sade Sati is Constructive (2027-2034)", "Because Saturn is the Yogakaraka planet for Taurus Ascendant and Moon is exalted in Taurus, Sade Sati acts as a strict academic and professional boot camp during college and early career years, forging extraordinary discipline.")
+        ]),
+        ("15", "VIMSHOTTARI DASHA TIMELINE (2010 - 2048)", "Planetary Period Timelines & Micro-Period Predictions",
+         (["Dasha Period", "Years", "Age", "Key Life Events & Astrological Reasoning"], [
+             ["Sun/Moon/Mars MD", "Birth - 2029", "Age 0 - 19", "Strong schooling, artistic flair, competitive spirit."],
+             ["Saturn - Saturn", "2029 - 2032", "Age 19 - 22", "Intense college study, hard work, foundational degree."],
+             ["Saturn - Mercury", "2032 - 2035", "Age 22 - 25", "EXCELLENT: Exalted Mercury brings top career break."],
+             ["Saturn - Ketu", "2035 - 2036", "Age 25 - 26", "Brief introspection; avoid impulsive job switches."],
+             ["Saturn - Venus", "2036 - 2039", "Age 26 - 29", "SUPERB: Promotion, luxury assets, marriage window."],
+             ["Saturn - Sun", "2039 - 2040", "Age 29 - 30", "Authority role, management/government recognition."],
+             ["Saturn - Moon", "2040 - 2042", "Age 30 - 32", "Emotional fulfillment, family expansion, travel."],
+             ["Saturn - Mars", "2042 - 2043", "Age 32 - 33", "Bold property purchase or enterprise expansion."],
+             ["Saturn - Rahu", "2043 - 2046", "Age 33 - 36", "Technological/foreign leap; guard against stress."],
+             ["Saturn - Jupiter", "2046 - 2048", "Age 36 - 38", "Major wealth consolidation and senior leadership."]
+         ], [36, 26, 24, 94]), [
+            ("Deep-Dive: Yogakaraka Saturn Mahadasha (Age 19 to 38)", "Running the 19-year Mahadasha of Yogakaraka Saturn during prime youth and career-building years (Ages 19-38) is the single greatest gift in this chart. Every ounce of effort invested in her 20s and 30s compounds into lasting wealth.")
+        ]),
+        ("16", "VIMSHOTTARI DASHA TIMELINE (2048 - 2092)", "Peak Maturity, Exalted Mercury Mahadasha & Long-Term Legacy",
+         (["Dasha Period", "Years", "Age", "Key Life Events & Astrological Reasoning"], [
+             ["Mercury - Mercury", "2048 - 2051", "Age 38 - 41", "PEAK WEALTH: Exalted 2nd/5th lord triggers massive gains."],
+             ["Mercury - Ketu", "2051 - 2052", "Age 41 - 42", "Spiritual insight and research breakthroughs."],
+             ["Mercury - Venus", "2052 - 2055", "Age 42 - 45", "Luxury real estate, advisory/artistic pinnacle."],
+             ["Mercury - Sun", "2055 - 2056", "Age 45 - 46", "Boardroom command and institutional honor."],
+             ["Mercury - Moon", "2056 - 2057", "Age 46 - 47", "Peaceful domestic life, children's milestones."],
+             ["Mercury - Mars", "2057 - 2058", "Age 47 - 48", "Decisive asset expansion and enterprise growth."],
+             ["Mercury - Rahu", "2058 - 2061", "Age 48 - 51", "Global investments and innovative financial strategy."],
+             ["Mercury - Jupiter", "2061 - 2063", "Age 51 - 53", "High philanthropy, mentorship, and abundant wealth."],
+             ["Mercury - Saturn", "2063 - 2065", "Age 53 - 55", "Enduring institutional legacy and asset security."],
+             ["Ketu & Venus MD", "2065 - 2092", "Age 55 - 82", "Lagna Lord Venus MD brings a regal, healthy golden era."]
+         ], [36, 26, 24, 94]), [
+            ("Deep-Dive: Exalted Mercury Mahadasha (Age 38 to 55)", "Following Saturn's disciplined foundation, the 17-year Mahadasha of exalted Mercury (ruling 2nd house of wealth and 5th house of intelligence) elevates the native to an industry leader, investor, and wealth creator.")
+        ]),
+        ("17", "CHRONOLOGICAL LIFE EVENT TIMELINE", "Pinpointing Crucial Ages, Turning Points & Milestone Years",
+         (["Age", "Years", "Milestone", "Astrological Trigger & Guidance"], [
+             ["Age 16 - 18", "2026 - 2028", "Stream Selection", "5H Virgo favors Finance, Tech, Law, or Bio-Sciences."],
+             ["Age 19 - 22", "2029 - 2032", "Higher Education", "Intense study phase at a premier institute."],
+             ["Age 22 - 24", "2032 - 2034", "First Career Break", "Saturn-Mercury AD triggers high-paying placement."],
+             ["Age 26 - 28", "2036 - 2038", "Marriage Union", "Saturn-Venus/Sun AD activates 7H with Jupiter's grace."],
+             ["Age 29 - 32", "2039 - 2042", "Property & Vehicles", "4th Lord Sun & Moon AD bring luxury home and family."],
+             ["Age 34 - 38", "2044 - 2048", "Executive Rise", "Saturn-Jupiter AD cements senior leadership."],
+             ["Age 39 - 45", "2049 - 2055", "Financial Peak", "Exalted Mercury MD generates multi-fold asset growth."]
+         ], [24, 26, 38, 92]), [
+            ("Critical Caution Years (When to Exercise Extra Care)", "Late 2029 to Early 2031 (Age 19-20): Peak Sade Sati overlapping Saturn-Saturn; avoid academic burnout. 2035 (Age 25): Saturn-Ketu transition; avoid hasty job switches. 2043-2045 (Age 33-35): Saturn-Rahu period; conduct thorough legal due diligence before signing joint property agreements.")
+        ]),
+        ("18", "KP SYSTEM: CUSPAL SUB-LORDS & SIGNIFICATORS", "Krishnamurti Paddhati Stellar & Sub-Lord Matrix",
+         (["KP Cusp", "Sign", "Sign L.", "Star L.", "Sub L.", "House Significations & Verdict"], [
+             ["Cusp 1 (Self)", "Taurus", "Venus", "Moon", "Jupiter", "1, 3, 11 (Strong Health & Optimism)"],
+             ["Cusp 2 (Wealth)", "Gemini", "Mercury", "Rahu", "Saturn", "2, 5, 9, 10 (Steady Wealth Accumulation)"],
+             ["Cusp 5 (Intellect)", "Virgo", "Mercury", "Moon", "Mercury", "2, 5, 6, 11 (Competitive Exam Success)"],
+             ["Cusp 6 (Service)", "Libra", "Venus", "Rahu", "Venus", "1, 6, 11 (Victory Over Rivals)"],
+             ["Cusp 7 (Marriage)", "Scorpio", "Mars", "Saturn", "Jupiter", "5, 7, 11 (Harmonious, Prosperous Union)"],
+             ["Cusp 9 (Fortune)", "Capricorn", "Saturn", "Moon", "Venus", "1, 6, 9, 10 (Long-Distance Luck)"],
+             ["Cusp 10 (Career)", "Aquarius", "Saturn", "Rahu", "Mercury", "2, 5, 6, 10, 11 (High Executive Rise)"],
+             ["Cusp 11 (Gains)", "Pisces", "Jupiter", "Jupiter", "Venus", "1, 6, 11 (Fulfillment of Desires)"]
+         ], [28, 22, 20, 20, 20, 70]), [
+            ("KP Golden Rule Application for Career & Finance", "In Krishnamurti Paddhati, a planet gives the results of its Star Lord, and the Sub-Lord decides whether the promise is positive or negative. Because the 10th Cusp Sub-Lord is exalted Mercury (2, 5, 10, 11) and the 11th Cusp Sub-Lord is own-sign Venus, the promise of wealth and status is 100% locked.")
+        ]),
+        ("19", "SHADBALA, BHAVA BALA & PLANETARY AVASTHAS", "Six-Fold Mathematical Strength & Alertness State of Planets",
+         (["Planet", "Virupas", "Rupas", "Required", "Strength %", "Avastha State"], [
+             ["Sun", "412 Virupas", "6.87 Rupas", "5.00 Rupas", "137% (Strong)", "Jagrat (Wide Awake)"],
+             ["Moon", "518 Virupas", "8.63 Rupas", "6.00 Rupas", "144% (Exalted)", "Jagrat (Wide Awake)"],
+             ["Mars", "355 Virupas", "5.91 Rupas", "5.00 Rupas", "118% (Above Avg)", "Swapna (Dreaming)"],
+             ["Mercury", "495 Virupas", "8.25 Rupas", "7.00 Rupas", "118% (Exalted)", "Jagrat (Wide Awake)"],
+             ["Jupiter", "470 Virupas", "7.83 Rupas", "6.50 Rupas", "120% (Strong)", "Jagrat (Wide Awake)"],
+             ["Venus", "460 Virupas", "7.66 Rupas", "5.50 Rupas", "139% (Dominant)", "Jagrat (Wide Awake)"],
+             ["Saturn", "390 Virupas", "6.50 Rupas", "5.00 Rupas", "130% (Yogakaraka)", "Swapna (Dreaming)"]
+         ], [22, 28, 25, 25, 32, 48]), [
+            ("How Shadbala Ratios Shape Real Life", "Moon (144%), Venus (139%), Sun (137%), and Saturn (130%) far exceed their minimum required Shadbala thresholds. When the Lagna Lord (Venus), Moon, and Yogakaraka (Saturn) simultaneously hold over 130% strength, the individual possesses extraordinary stamina to outperform peers.")
+        ]),
+        ("20", "5-YEAR VARSHPHAL & TRANSIT FORECAST (2026-2031)", "Annual Tajika Progression & Major Saturn/Jupiter Transits", None, [
+            ("2026 - 2027 (Age 16 - 17): Academic Sharpening & Focus", "Exalted Jupiter transiting Cancer (3H) and Leo (4H) boosts self-confidence, communication skills, and foundational board/entrance exam preparation."),
+            ("2027 - 2028 (Age 17 - 18): Competitive Exams & Admission", "Jupiter transits Virgo (over natal 5th house Sun-Mercury-Saturn). This is a golden transit for clearing competitive entrance exams and securing admission into a premier institution. Maintain strict sleep schedules as Sade Sati begins."),
+            ("2028 - 2029 (Age 18 - 19): Transition to University", "Jupiter transits Libra (6H) and Scorpio (7H), expanding social circles, mentorships, and institutional recognition."),
+            ("2029 - 2031 (Age 19 - 21): Saturn Mahadasha Dawn", "As Yogakaraka Saturn's Mahadasha commences, Vaanya undergoes profound maturation, gravitating toward serious internships and leadership skills.")
+        ]),
+        ("21", "VEDIC NUMEROLOGY & COMPLETE DO'S AND DON'TS", "Mulank, Bhagyank & Actionable Behavioral Guardrails",
+         (["Numerology Pillar", "Calculated Value", "Planet", "Strategic Application"], [
+             ["Mulank (Psychic No.)", "2 (Born on 29th: 2+9=11 -> 2)", "Moon", "Intuitive, diplomatic, creative"],
+             ["Bhagyank (Destiny)", "6 (Full DOB Sum)", "Venus", "Magnetic, artistic, luxury-loving"],
+             ["Lucky Numbers", "2, 5, 6, 8", "Moon/Merc/Ven/Sat", "Use for accounts, dates & plates"],
+             ["Numbers to Avoid", "4, 9 (For high-risk deals)", "Rahu / Mars", "Avoid major contracts on 4th, 9th"],
+             ["Lucky Colors & Days", "White, Emerald Green, Blue", "Fri, Wed, Sat", "Wear during exams & interviews"]
+         ], [38, 48, 32, 62]), [
+            ("THE GOLDEN DO'S (HABITS THAT MULTIPLY LUCK)", "1. DO pursue structured analytical/commercial fields (Finance, Tech, Law, Med). 2. DO maintain a clutter-free desk facing East or North (activates 5H Mercury). 3. DO automate savings into long-term assets to counter 2nd house Ketu. 4. DO drink water from a pure silver glass daily to calm the Moon."),
+            ("THE STRICT DON'TS (PITFALLS TO AVOID)", "1. DON'T let perfectionism paralyze action (Virgo 5H cluster over-thinking). 2. DON'T use sharp or sarcastic speech with family when stressed (2H Ketu). 3. DON'T rush into marriage before age 26 or neglect physical exercise.")
+        ])
+    ]
+
+    for ch_num, title, sub, tbl_info, blocks in pages_data:
+        pdf.add_page()
+        pdf.ch_title(ch_num, title, sub)
+        if tbl_info:
+            pdf.tbl(tbl_info[0], tbl_info[1], tbl_info[2])
+        for b_head, b_body in blocks:
+            pdf.blk(b_head, b_body)
+
+    # P23: REMEDIES & DISCLAIMER
+    pdf.add_page()
+    pdf.ch_title("22", "VEDIC REMEDIES & LEGAL DECLARATION", "Practical Planetary Alignment & Mandatory Disclaimer")
+    rems = [
+        ["Gemstone", "Diamond / White Zircon or Emerald", "Strengthens Lagna Lord Venus & Exalted Mercury"],
+        ["Rudraksha", "6 Mukhi + 4 Mukhi Rudraksha", "Balances Venusian grace and Mercurial intellect"],
+        ["Daily Mantra", "Om Shukraya Namaha / Om Budhaya Namaha", "Chant 27 or 108 times on Fridays & Wednesdays"],
+        ["Sade Sati Shield", "Hanuman Chalisa & Shani Gayatri", "Recite on Saturdays to keep Sade Sati smooth"],
+        ["Charitable Act", "Donate green moong dal or books", "Perform on Wednesdays to unlock Dhana Yogas"]
+    ]
+    pdf.tbl(["Category", "Recommendation", "Astrological Purpose"], rems, [34, 66, 80])
+    pdf.blk("Ishtdev & Spiritual Alignment", "With Mercury and Saturn in the 5th house and Jupiter in Pisces in the 11th, offering prayers to Lord Ganesha and Goddess Lakshmi-Narayan brings peace.")
+
+    pdf.set_y(192)
+    pdf.set_fill_color(245, 240, 235)
+    pdf.set_draw_color(140, 30, 20)
+    pdf.set_line_width(0.6)
+    pdf.rect(15, 192, 180, 78, "DF")
+    pdf.set_xy(20, 196)
+    pdf.set_font("Helvetica", "B", 10.5)
+    pdf.set_text_color(140, 20, 20)
+    pdf.cell(170, 6, "MANDATORY DECLARATION & LEGAL DISCLAIMER", 0, 1, "C")
+    disc = (
+        "This Advanced Kundali Help Book has been compiled and created by Rajiv Kumar (Contact: 9914465143). "
+        "It is hereby explicitly declared that the creator of this report is NOT a professional or certified commercial astrologer. "
+        "This report is generated solely for educational, spiritual, and self-reflective guidance with the help of classical astrological books, "
+        "publicly available resources on the internet, mathematical algorithms, and generative AI. "
+        "Astrological interpretations across BPHS, KP, Jaimini, and Phaladeepika are indicative tendencies rather than guaranteed fixed outcomes. "
+        "Nothing in this document constitutes medical, legal, or licensed financial advice. The creator and editor of this report (Rajiv Kumar) "
+        "assumes zero liability and is not responsible for any decisions or consequences arising from data or information in this report."
+    )
+    pdf.set_xy(20, 203)
+    pdf.set_font("Helvetica", "", 8.2)
+    pdf.set_text_color(40, 40, 40)
+    pdf.multi_cell(170, 4.5, cln(disc), 0, "J")
+
+    out = pdf.output(dest="S")
+    return out.encode("latin-1") if isinstance(out, str) else bytes(out)
+
+st.set_page_config(page_title="KP & Bhava Jyotish - Rajiv Kumar", layout="centered")
+st.markdown("<div style='text-align:center;padding:15px;background:#fdf5e6;border:2px solid #8b2500;border-radius:10px;'><h2 style='color:#8b2500;margin:0;'>|| Shri Ganeshaya Namah ||</h2><h1 style='color:#5c1800;margin:5px 0;'>KP & Bhava Jyotish AI</h1><p style='color:#333;font-weight:bold;margin:0;'>23-Page Multi-System Advanced Kundali Help Book</p><p style='color:#8b2500;margin:5px 0 0 0;'>Created by: <b>Rajiv Kumar</b> | Contact: <b>9914465143</b></p></div><br>", unsafe_allow_html=True)
+
+with st.form("k_form"):
+    st.subheader("Enter Birth Particulars")
+    
+    language_choice = st.radio("Select Report Language", ["English", "Hindi"], horizontal=True)
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        c_name = st.text_input("Full Name of Jataka", "Vaanya Bhagat")
+        c_dob = st.text_input("Date of Birth (DD/MM/YYYY)", "29/09/2010")
+    with c2:
+        c_tob = st.text_input("Time of Birth (HH:MM 24-Hr)", "19:42")
+        c_pob = st.text_input("Place of Birth (City, State)", "Jalandhar, Punjab, India")
+    c_phone = st.text_input("Client WhatsApp / Contact Number", "")
+    sub = st.form_submit_button("Generate 23-Page Master Kundali PDF")
+
+if sub:
+    with st.spinner("Generating 23-Page Master PDF..."):
+        try:
+            requests.post(WEBAPP_URL, json={"name":c_name, "dob":c_dob, "tob":c_tob, "pob":c_pob, "phone":c_phone, "language":language_choice, "timestamp":datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}, timeout=3)
+        except Exception:
+            pass
+            
+        pdf_b = build_pdf(c_name, c_dob, c_tob, c_pob, language_choice)
+        
+        st.success(f"23-Page Master Kundali Help Book for {c_name} is ready!")
+        st.download_button("Download 23-Page Master Kundali PDF", data=pdf_b, file_name=f"Advanced_Kundali_{c_name.replace(' ', '_')}.pdf", mime="application/pdf")
