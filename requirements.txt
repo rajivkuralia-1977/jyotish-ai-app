@@ -1,3 +1,4 @@
 streamlit
-weasyprint
+fpdf2
 requests
+uharfbuzz
